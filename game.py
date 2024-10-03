@@ -60,6 +60,9 @@ def save_settings(settings):
 # Настройки
 settings = load_settings()
 
+# Цвет символа
+cursor_color = (218, 136, 245)
+
 # Игровые константы
 SCREEN_WIDTH, SCREEN_HEIGHT = settings['resolution']
 FONT_SIZE = 24
@@ -91,6 +94,8 @@ pygame.mixer.init()
 # Глобальные переменные для экрана и шрифта
 screen = None
 font = None
+
+pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_NO)
 
 def apply_display_settings():
     global screen, font, SCREEN_WIDTH, SCREEN_HEIGHT
@@ -163,6 +168,9 @@ font = pygame.font.SysFont('Courier', FONT_SIZE)
 
 # Инициализация часов
 clock = pygame.time.Clock()
+
+# Скрываем стандартный курсор
+pygame.mouse.set_visible(False)
 
 # Класс игрока
 class Player:
@@ -802,7 +810,7 @@ def main():
     wave = 1
     wave_start_time = pygame.time.get_ticks()
     paused = False
-
+    cursor_symbol = font.render('`', True, cursor_color)
     running = True
 
     while running:
@@ -823,6 +831,7 @@ def main():
 
             # Отображение персонажа игрока
             draw_text(PLAYER_SYMBOL, font, PLAYER_COLOR, int(player.x), int(player.y))
+            screen.blit(cursor_symbol, (mouse_x - cursor_symbol.get_width() // 2, mouse_y - cursor_symbol.get_height() // 2))
 
             if not enemies:
                 if player.hp > 0:
