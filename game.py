@@ -201,6 +201,10 @@ class Player:
             self.x += MOUSE_FOLLOW_SPEED * direction_x
             self.y += MOUSE_FOLLOW_SPEED * direction_y
 
+        # Ограничение позиции игрока в пределах границ экрана
+        self.x = max(0, min(self.x, SCREEN_WIDTH - FONT_SIZE))
+        self.y = max(0, min(self.y, SCREEN_HEIGHT - FONT_SIZE))
+
     def gain_exp(self, amount):
         self.exp += round(amount, 1)  # Округление опыта до одного десятичного
         pygame.mixer.Sound.play(exp_gain_sound)  # Воспроизведение звука получения опыта
@@ -607,6 +611,7 @@ def handle_collisions(player, enemies, damage_numbers, wave, wave_start_time, pr
 def upgrade_menu(player):
     selected = None
     upgrade_font = pygame.font.SysFont('Courier', 36)
+    hint_font = pygame.font.SysFont('Courier', 24)  # Шрифт для подсказки
     while selected is None:
         screen.fill(BACKGROUND_COLOR)
         # Отображение заголовка меню улучшений
@@ -617,6 +622,9 @@ def upgrade_menu(player):
         for i, option in enumerate(options):
             option_text = font.render(option, True, TEXT_COLOR)
             screen.blit(option_text, (SCREEN_WIDTH // 2 - option_text.get_width() // 2, SCREEN_HEIGHT // 2 - 50 + i * 40))
+        # Добавление подсказки внизу
+        hint_text = hint_font.render("Press 1, 2, or 3 to select an upgrade.", True, TEXT_COLOR)
+        screen.blit(hint_text, (SCREEN_WIDTH // 2 - hint_text.get_width() // 2, SCREEN_HEIGHT - 100))
         pygame.display.flip()
 
         for event in pygame.event.get():
@@ -894,6 +902,8 @@ def main():
     paused = False
     cursor_symbol = font.render('`', True, cursor_color)
     running = True
+    esc_hold_start_time = None  # Время начала удержания клавиши Esc
+    esc_hold_duration = 2000    # Время в миллисекундах для выхода в меню (2 секунды)
 
     while running:
         delta_time = clock.tick(60)
@@ -904,7 +914,14 @@ def main():
                 sys.exit()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    paused = not paused
+                    if not paused:
+                        paused = True
+                        esc_hold_start_time = None  # Сбрасываем время удержания
+                    else:
+                        esc_hold_start_time = pygame.time.get_ticks()  # Начинаем отсчет удержания
+            if event.type == pygame.KEYUP:
+                if event.key == pygame.K_ESCAPE:
+                    esc_hold_start_time = None  # Сбрасываем время удержания при отпускании клавиши
 
         if not paused:
             screen.fill(BACKGROUND_COLOR)
@@ -1009,7 +1026,20 @@ def main():
             # Отображение состояния паузы
             pause_text = pygame.font.SysFont('Courier', 48).render("Paused", True, TEXT_COLOR)
             screen.blit(pause_text, (SCREEN_WIDTH // 2 - pause_text.get_width() // 2, SCREEN_HEIGHT // 2 - 50))
+
+            # Отображение подсказки о выходе в меню
+            hint_font = pygame.font.SysFont('Courier', 24)
+            hint_text = hint_font.render("Hold Esc to return to menu.", True, TEXT_COLOR)
+            screen.blit(hint_text, (SCREEN_WIDTH // 2 - hint_text.get_width() // 2, SCREEN_HEIGHT - 100))
+
             pygame.display.flip()
+
+            # Проверка удержания клавиши Esc
+            if esc_hold_start_time is not None:
+                hold_time = pygame.time.get_ticks() - esc_hold_start_time
+                if hold_time >= esc_hold_duration:
+                    # Выход в главное меню
+                    return  # Возвращаемся из функции main(), что приведет к возврату в главное меню
 
     pygame.quit()
 
