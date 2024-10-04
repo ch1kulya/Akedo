@@ -8,6 +8,10 @@ Endless Console-Style Pygame is a minimalist game developed using Pygame. The ob
 - **Esc:** Pause the game.
 - **Enter:** Menu action.
 
+## Gameplay
+
+![](screenshots/gameplay.gif)
+
 ## Screenshots
 
 ![Main Menu](screenshots/main.png)
