@@ -1176,6 +1176,13 @@ def main():
                 screen.blit(game_over_text, (SCREEN_WIDTH // 2 - game_over_text.get_width() // 2, SCREEN_HEIGHT // 2 - 50))
                 pygame.display.flip()
                 time.sleep(2)
+
+                # Если игрок погиб во время боя с боссом, останавливаем музыку босса и запускаем обычную
+                if in_boss_fight:
+                    in_boss_fight = False
+                    boss_music.stop()
+                    pygame.mixer.music.play(-1)
+
                 return  # Возврат в главное меню
 
             # Обновление и отображение чисел урона
