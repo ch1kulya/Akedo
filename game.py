@@ -435,24 +435,46 @@ class Enemy:
                 self.damage_timer = random.randint(1000, 3000) + random.randint(0, 5000)
 
 # Класс для отображения чисел урона
+# Класс для отображения чисел урона и других чисел
 class DamageNumber:
-    def __init__(self, x, y, damage, color, lifetime=1000):
-        self.x = x
-        self.y = y
+    def __init__(self, player_x, player_y, damage, color, lifetime=1000):
+        # Рандомное положение вокруг игрока на небольшом расстоянии
+        angle = random.uniform(0, 2 * math.pi)
+        distance = random.uniform(20, 40)  # Расстояние от персонажа
+        self.x = player_x + math.cos(angle) * distance
+        self.y = player_y + math.sin(angle) * distance
+
         self.damage = damage
         self.color = color
-        self.lifetime = lifetime  # Как долго число урона остается на экране
+        self.lifetime = lifetime  # Длительность отображения числа
         self.start_time = pygame.time.get_ticks()
+
+        self.initial_font_size = 10  # Начальный размер шрифта
+        self.max_font_size = 20      # Максимальный размер шрифта
+        self.font_size = self.initial_font_size
 
     def update(self):
         elapsed_time = pygame.time.get_ticks() - self.start_time
-        self.y -= 0.05  # Медленное поднятие числа урона
-        if elapsed_time > self.lifetime:
-            return False  # Сигнализирует о необходимости удаления числа урона
+        life_ratio = elapsed_time / self.lifetime
+        if life_ratio > 1:
+            return False  # Удаляем число после завершения времени жизни
+
+        # Анимация изменения размера числа
+        if life_ratio <= 0.5:
+            # Увеличиваем размер в первой половине времени жизни
+            self.font_size = self.initial_font_size + (self.max_font_size - self.initial_font_size) * (life_ratio * 2)
+        else:
+            # Уменьшаем размер во второй половине времени жизни
+            self.font_size = self.max_font_size - (self.max_font_size - self.initial_font_size) * ((life_ratio - 0.5) * 2)
+
         return True
 
     def draw(self, surface):
-        draw_text(str(self.damage), font, self.color, int(self.x), int(self.y))
+        temp_font = pygame.font.SysFont('Courier', int(self.font_size))
+        text_surface = temp_font.render(str(self.damage), True, self.color)
+        # Центрируем текст по координатам x и y
+        rect = text_surface.get_rect(center=(int(self.x), int(self.y)))
+        surface.blit(text_surface, rect)
 
 def spawn_health_pickup(enemy_x, enemy_y):
     if random.random() < 0.15:  # 15% шанс появления аптечки
@@ -490,7 +512,7 @@ def handle_collisions(player, enemies, damage_numbers, wave, wave_start_time, pr
                 enemy.last_hit_time = current_time
                 damage = enemy.damage
                 player_died = player.apply_damage(damage)
-                damage_numbers.append(DamageNumber(player.x, player.y + 30, round(damage, 1), (255, 0, 0)))
+                damage_numbers.append(DamageNumber(player.x, player.y, round(damage, 1), (255, 0, 0)))
                 if player_died:
                     return True  # Сигнализирует о завершении игры
 
@@ -509,7 +531,7 @@ def handle_collisions(player, enemies, damage_numbers, wave, wave_start_time, pr
                     else:
                         exp_gain = round(0.9 + 0.1 * wave, 1)
                     player.gain_exp(exp_gain)
-                    damage_numbers.append(DamageNumber(player.x, player.y + 30, f"+{exp_gain} EXP", (0, 255, 0)))
+                    damage_numbers.append(DamageNumber(player.x, player.y, f"+{exp_gain} EXP", (0, 0, 255)))
 
                     # 15% шанс появления аптечки
                     health_pickup = spawn_health_pickup(enemy.x, enemy.y)
@@ -889,6 +911,7 @@ def main():
                     player.heal(1)
                     health_pickups.remove(health_pickup)
                     pygame.mixer.Sound.play(health_pickup_sound)
+                    damage_numbers.append(DamageNumber(player.x, player.y, "+1 HP", (0, 255, 0)))
 
             # Отображение статистики игрока (уровень, здоровье и опыт)
             stats_text = f'Level: {player.level}  HP: {player.hp:.1f}/{player.max_hp:.1f}  EXP: {player.exp:.1f}/{player.exp_to_level_up}'
