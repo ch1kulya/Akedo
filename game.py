@@ -90,6 +90,7 @@ INVULNERABILITY_DURATION = 1000  # Продолжительность неуяз
 # Инициализация Pygame и микшера для звука
 pygame.init()
 pygame.mixer.init()
+pygame.mixer.set_num_channels(16)
 
 # Глобальные переменные для экрана и шрифта
 screen = None
@@ -153,6 +154,8 @@ countdown_sound = pygame.mixer.Sound(os.path.join(base_path, 'audio', 'countdown
 game_over_sound = pygame.mixer.Sound(os.path.join(base_path, 'audio', 'game_over.wav'))
 pygame.mixer.music.load(os.path.join(base_path, 'audio', 'background_music.wav'))
 
+shooter_fire_channel = pygame.mixer.Channel(5)
+
 # Применение начальных настроек
 apply_display_settings()
 apply_volume_settings()
@@ -184,8 +187,11 @@ class Player:
         self.max_hp = 10
         self.speed = 1
         self.damage = PLAYER_DAMAGE
-        self.defense = 0
+        self.defense = 0.0
         self.last_hit_time = pygame.time.get_ticks()  # Время последнего удара
+        self.hp_upgrade_count = 0  # Количество улучшений HP
+        self.defense_upgrade_count = 0  # Количество улучшений защиты
+        self.health_pickup_heal_amount = 1  # Начальное количество восстанавливаемого HP аптечкой
 
     def move(self, target_x, target_y):
         direction_x = target_x - self.x
@@ -209,18 +215,20 @@ class Player:
         upgrade_menu(self)  # Вызов меню улучшений при повышении уровня
 
     def apply_damage(self, damage):
-        # Защита снижает урон, но урон не может быть меньше 1
-        actual_damage = max(1, damage * (1 - self.defense / 100))
+        # Защита уменьшает урон на 0.2 за каждое улучшение
+        damage_reduction = 0.2 * self.defense_upgrade_count
+        actual_damage = max(0.1, damage - damage_reduction)  # Урон не может быть меньше 0.1
         self.hp -= actual_damage
         if self.hp <= 0:
             self.hp = 0
-            pygame.mixer.Sound.play(damage_sound)  # Воспроизведение звука урона
+            pygame.mixer.Sound.play(damage_sound)
             return True  # Сигнализирует о смерти игрока
-        pygame.mixer.Sound.play(damage_sound)  # Воспроизведение звука урона, если еще жив
+        pygame.mixer.Sound.play(damage_sound)
         return False
 
     def heal(self, amount):
         self.hp = min(self.hp + amount, self.max_hp)
+        self.hp = round(self.hp, 1)  # Округляем до одного знака после запятой
 
 # Класс аптечки здоровья
 class HealthPickup:
@@ -400,7 +408,8 @@ class Enemy:
                     dy = player_y - self.y
                     distance = math.sqrt(dx ** 2 + dy ** 2)
                     if distance > 0:
-                        pygame.mixer.Sound.play(shooter_fire_sound)  # Воспроизведение звука выстрела
+                        if not shooter_fire_channel.get_busy():
+                            shooter_fire_channel.play(shooter_fire_sound)
                         return Projectile(self.x, self.y, dx / distance, dy / distance, self.damage, follow_player=True)
 
         return None
@@ -571,8 +580,16 @@ def upgrade_menu(player):
                 sys.exit()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_1:
-                    player.max_hp += 1
-                    player.hp += 1
+                    # Увеличиваем максимальное HP на 10%
+                    player.max_hp *= 1.10
+                    player.max_hp = round(player.max_hp, 1)  # Округляем до одного знака после запятой
+                    player.hp = player.max_hp  # Восстанавливаем HP до максимума
+                    player.hp_upgrade_count += 1  # Увеличиваем счетчик улучшений HP
+
+                    # Увеличиваем количество восстанавливаемого HP аптечкой на 20%
+                    player.health_pickup_heal_amount *= 1.20
+                    player.health_pickup_heal_amount = round(player.health_pickup_heal_amount, 1)  # Округляем
+
                     selected = "hp"
                     pygame.mixer.Sound.play(upgrade_select_sound)
                 elif event.key == pygame.K_2:
@@ -580,11 +597,9 @@ def upgrade_menu(player):
                     selected = "damage"
                     pygame.mixer.Sound.play(upgrade_select_sound)
                 elif event.key == pygame.K_3:
-                    if player.defense < 90:
-                        player.defense += 1
+                    player.defense_upgrade_count += 1  # Увеличиваем счетчик улучшений защиты
                     selected = "defense"
                     pygame.mixer.Sound.play(upgrade_select_sound)
-
         clock.tick(60)
 
 def wave_countdown():
@@ -908,13 +923,14 @@ def main():
             for health_pickup in health_pickups[:]:
                 health_pickup.draw(screen)
                 if health_pickup.is_colliding(player):
-                    player.heal(1)
+                    healed_amount = player.health_pickup_heal_amount
+                    player.heal(healed_amount)
                     health_pickups.remove(health_pickup)
                     pygame.mixer.Sound.play(health_pickup_sound)
-                    damage_numbers.append(DamageNumber(player.x, player.y, "+1 HP", (0, 255, 0)))
+                    damage_numbers.append(DamageNumber(player.x, player.y, f"+{healed_amount} HP", (0, 255, 0)))
 
             # Отображение статистики игрока (уровень, здоровье и опыт)
-            stats_text = f'Level: {player.level}  HP: {player.hp:.1f}/{player.max_hp:.1f}  EXP: {player.exp:.1f}/{player.exp_to_level_up}'
+            stats_text = f'Level: {player.level}  HP: {player.hp:.1f}/{player.max_hp:.1f}  DEF: {player.defense_upgrade_count * 0.2:.1f}  EXP: {player.exp:.1f}/{player.exp_to_level_up}'
             draw_text(stats_text, font, TEXT_COLOR, 10, 10)
 
             # Удаление мертвых врагов
