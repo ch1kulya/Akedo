@@ -162,7 +162,8 @@ apply_display_settings()
 apply_volume_settings()
 
 # Воспроизведение фоновой музыки
-pygame.mixer.music.play(-1, 0.0)  # Цикл бесконечно
+if not pygame.mixer.music.get_busy():
+    pygame.mixer.music.play(-1, 0.0)  # Цикл бесконечно
 
 # Загрузка музыки для боя с боссом
 boss_music = pygame.mixer.Sound(os.path.join(base_path, 'audio', 'boss_theme.wav'))
@@ -198,6 +199,8 @@ class Player:
         self.hp_upgrade_count = 0  # Количество улучшений HP
         self.defense_upgrade_count = 0  # Количество улучшений защиты
         self.health_pickup_heal_amount = 1  # Начальное количество восстанавливаемого HP аптечкой
+        self.invincibility_start_time = 0  # Время начала неуязвимости
+        self.invincibility_duration = 30  # Продолжительность неуязвимости (в миллисекундах)
 
     def move(self, target_x, target_y):
         direction_x = target_x - self.x
@@ -225,11 +228,16 @@ class Player:
         upgrade_menu(self)  # Вызов меню улучшений при повышении уровня
 
     def apply_damage(self, damage):
+        current_time = pygame.time.get_ticks()
+        if current_time - self.invincibility_start_time < self.invincibility_duration:
+            return False  # Игрок временно неуязвим
+
         # Защита уменьшает урон на 0.2 за каждое улучшение
         damage_reduction = 0.2 * self.defense_upgrade_count
         actual_damage = max(0.1, damage - damage_reduction)  # Урон не может быть меньше 0.1
         self.hp -= actual_damage
         self.last_damage_taken = actual_damage  # Сохраняем фактический урон для отображения
+        self.invincibility_start_time = current_time  # Обновляем время начала неуязвимости
         if self.hp <= 0:
             self.hp = 0
             pygame.mixer.Sound.play(damage_sound)
@@ -270,7 +278,7 @@ class Projectile:
         elapsed_time = pygame.time.get_ticks() - self.start_time
         if elapsed_time > self.lifetime:
             return False  # Снаряд исчезает
-        self.speed = max(self.speed - 0.05, 0)  # Постепенное замедление снаряда
+        self.speed = max(self.speed - 0.02, 0)  # Постепенное замедление снаряда
 
         if self.follow_player and player_x is not None and player_y is not None:
             # Если снаряд должен следовать за игроком
