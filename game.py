@@ -85,7 +85,7 @@ KNOCKBACK_STRENGTH = 10  # Сила отбрасывания при попада
 PLAYER_DAMAGE = 1  # Урон, наносимый игроком за удар
 DAMAGE_COOLDOWN = 400  # Кулдаун в миллисекундах для атак
 SHAKE_INTENSITY = 2  # Интенсивность тряски врага перед тем, как он станет красным
-INVULNERABILITY_DURATION = 1000  # Продолжительность неуязвимости игрока в начале волны (в мс)
+INVULNERABILITY_DURATION = 600  # Продолжительность неуязвимости игрока в начале волны (в мс)
 
 # Инициализация Pygame и микшера для звука
 pygame.init()
@@ -503,7 +503,7 @@ class Boss(Enemy):
         base_hp = 69
         base_contact_damage = 3
         base_projectile_damage = 1
-        multiplier = 1.5 ** (appearance_number - 1)  # Увеличение на 1.5x с каждым появлением
+        multiplier = 2 ** (appearance_number - 1)  # Увеличение на 2x с каждым появлением
 
         self.hp = base_hp * multiplier
         self.max_hp = self.hp  # Для отображения полоски здоровья
@@ -514,11 +514,11 @@ class Boss(Enemy):
         # Состояния атаки босса
         self.attack_patterns = ['explode_shot', 'burst_shot', 'melee_attack']
         self.current_attack_index = 0
-        self.attack_cooldown = 3000  # Время между атаками в мс
+        self.attack_cooldown = 1500  # Время между атаками в мс
         self.last_attack_time = pygame.time.get_ticks()
         self.shaking = False
         self.shake_start_time = 0
-        self.shake_duration = 1000  # Длительность тряски перед атакой
+        self.shake_duration = 900  # Длительность тряски перед атакой
         self.is_red = False  # Флаг для состояния атаки в ближнем бою
         self.red_start_time = 0
         self.attack_in_progress = False
@@ -1210,6 +1210,14 @@ def main():
 
             # Удаление мертвых врагов
             enemies = [enemy for enemy in enemies if not enemy.is_dead]
+            
+            if not enemies:
+                if in_boss_fight:
+                    in_boss_fight = False
+                    # Останавливаем музыку босса
+                    boss_music.stop()
+                    # Запускаем основную музыку
+                    pygame.mixer.music.play(-1, 0.0)
 
             pygame.display.flip()
         else:
