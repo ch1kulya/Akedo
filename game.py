@@ -163,11 +163,16 @@ apply_volume_settings()
 # Воспроизведение фоновой музыки
 pygame.mixer.music.play(-1, 0.0)  # Цикл бесконечно
 
+# Загрузка музыки для боя с боссом
+boss_music = pygame.mixer.Sound(os.path.join(base_path, 'audio', 'boss_theme.wav'))
+boss_music.set_volume(settings['volume_music'])
+
 # Установка заголовка окна
 pygame.display.set_caption('<The Game>')
 
 # Настройка шрифтов
 font = pygame.font.SysFont('Courier', FONT_SIZE)
+boss_font = pygame.font.SysFont('Courier', FONT_SIZE, bold=True)
 
 # Инициализация часов
 clock = pygame.time.Clock()
@@ -223,6 +228,7 @@ class Player:
         damage_reduction = 0.2 * self.defense_upgrade_count
         actual_damage = max(0.1, damage - damage_reduction)  # Урон не может быть меньше 0.1
         self.hp -= actual_damage
+        self.last_damage_taken = actual_damage  # Сохраняем фактический урон для отображения
         if self.hp <= 0:
             self.hp = 0
             pygame.mixer.Sound.play(damage_sound)
@@ -458,7 +464,7 @@ class SuicideEnemy(Enemy):
         self.hp = 3 * (1 + 0.05 * (wave - 1))  # Базовое HP увеличивается с волнами
         self.shaking = False
         self.shake_start_time = None
-        self.shake_duration = 2500  # Длительность тряски перед взрывом
+        self.shake_duration = 1500  # Длительность тряски перед взрывом
         self.explode = False  # Флаг для взрыва
         self.wave = wave
 
@@ -486,8 +492,118 @@ class SuicideEnemy(Enemy):
         else:
             # Обычное поведение движения к игроку
             pass  # Движение обрабатывается в основном цикле или методом move_towards_player
+        
+# Класс босса
+class Boss(Enemy):
+    def __init__(self, x, y, appearance_number=1):
+        super().__init__(x, y, is_shooter=False, wave=1)
+        self.symbol = 'B'
+        # Стартовые характеристики
+        base_hp = 69
+        base_contact_damage = 3
+        base_projectile_damage = 1
+        multiplier = 1.5 ** (appearance_number - 1)  # Увеличение на 1.5x с каждым появлением
 
-# Класс для отображения чисел урона
+        self.hp = base_hp * multiplier
+        self.max_hp = self.hp  # Для отображения полоски здоровья
+        self.damage = base_contact_damage * multiplier
+        self.projectile_damage = base_projectile_damage * multiplier
+        self.color = ENEMY_DEFAULT_COLOR
+
+        # Состояния атаки босса
+        self.attack_patterns = ['explode_shot', 'burst_shot', 'melee_attack']
+        self.current_attack_index = 0
+        self.attack_cooldown = 3000  # Время между атаками в мс
+        self.last_attack_time = pygame.time.get_ticks()
+        self.shaking = False
+        self.shake_start_time = 0
+        self.shake_duration = 1000  # Длительность тряски перед атакой
+        self.is_red = False  # Флаг для состояния атаки в ближнем бою
+        self.red_start_time = 0
+        self.attack_in_progress = False
+        self.next_attack = None
+
+    def update(self, delta_time, player_x, player_y, projectiles):
+        current_time = pygame.time.get_ticks()
+
+        # Босс движется к игроку
+        self.move_towards_player(player_x, player_y, [])
+
+        if self.attack_in_progress:
+            if self.shaking:
+                if current_time - self.shake_start_time < self.shake_duration:
+                    # Босс трясётся
+                    self.x += random.randint(-SHAKE_INTENSITY, SHAKE_INTENSITY)
+                    self.y += random.randint(-SHAKE_INTENSITY, SHAKE_INTENSITY)
+                    # Ограничиваем позицию босса в пределах экрана
+                    self.x = max(0, min(self.x, SCREEN_WIDTH - FONT_SIZE))
+                    self.y = max(0, min(self.y, SCREEN_HEIGHT - FONT_SIZE))
+                else:
+                    # Тряска закончилась, выполняем атаку
+                    self.shaking = False
+                    self.execute_attack(player_x, player_y, projectiles)
+                    # Запоминаем время окончания атаки для кулдауна
+                    self.last_attack_time = current_time
+                    self.attack_in_progress = False
+                    # Переходим к следующей атаке
+                    self.current_attack_index = (self.current_attack_index + 1) % len(self.attack_patterns)
+        else:
+            # Проверяем, пора ли начать новую атаку
+            if current_time - self.last_attack_time >= self.attack_cooldown:
+                self.perform_attack()
+
+        # Обработка состояния красного цвета для ближней атаки
+        if self.is_red:
+            if current_time - self.red_start_time >= 2000:
+                self.is_red = False  # Босс перестаёт быть красным
+
+    def perform_attack(self):
+        # Начинаем тряску перед атакой
+        self.shaking = True
+        self.shake_start_time = pygame.time.get_ticks()
+        # Сохраняем тип следующей атаки
+        self.next_attack = self.attack_patterns[self.current_attack_index]
+        self.attack_in_progress = True
+
+    def execute_attack(self, player_x, player_y, projectiles):
+        # Выполняем атаку после тряски
+        if self.next_attack == 'explode_shot':
+            self.explode_shot(projectiles)
+        elif self.next_attack == 'burst_shot':
+            self.burst_shot(player_x, player_y, projectiles)
+        elif self.next_attack == 'melee_attack':
+            self.is_red = True  # Босс становится красным для ближней атаки
+            self.red_start_time = pygame.time.get_ticks()
+        # Сбрасываем тип следующей атаки
+        self.next_attack = None
+
+    def explode_shot(self, projectiles):
+        # Босс выпускает снаряды во все стороны
+        num_projectiles = 12
+        angle_between_projectiles = 360 / num_projectiles
+        for i in range(num_projectiles):
+            angle = math.radians(i * angle_between_projectiles)
+            dx = math.cos(angle)
+            dy = math.sin(angle)
+            projectile = Projectile(self.x, self.y, dx, dy, self.projectile_damage)
+            projectiles.append(projectile)
+
+    def burst_shot(self, player_x, player_y, projectiles):
+        # Босс стреляет очередью из 3-5 снарядов в игрока
+        num_shots = random.randint(3, 5)
+        for _ in range(num_shots):
+            dx = player_x - self.x + random.uniform(-15, 15)  # Немного разброса
+            dy = player_y - self.y + random.uniform(-15, 15)
+            distance = math.sqrt(dx ** 2 + dy ** 2)
+            if distance > 0:
+                projectile = Projectile(self.x, self.y, dx / distance, dy / distance, self.projectile_damage)
+                projectiles.append(projectile)
+
+    def take_damage(self, damage):
+        self.hp -= damage
+        if self.hp <= 0:
+            self.is_dead = True
+
 # Класс для отображения чисел урона и других чисел
 class DamageNumber:
     def __init__(self, player_x, player_y, damage, color, lifetime=1000):
@@ -541,8 +657,8 @@ def spawn_enemies(count, wave):
         x = random.randint(0, SCREEN_WIDTH)
         y = random.randint(0, SCREEN_HEIGHT)
         enemy_type_chance = random.random()
-        if enemy_type_chance < 0.15:
-            # 15% шанс спауна SuicideEnemy
+        if enemy_type_chance < 0.1:
+            # 10% шанс спауна SuicideEnemy
             enemies.append(SuicideEnemy(x, y, wave))
         else:
             is_shooter = random.random() < 0.3  # 30% шанс быть стрелком
@@ -562,15 +678,16 @@ def handle_collisions(player, enemies, damage_numbers, wave, wave_start_time, pr
 
     game_over = False
 
+
     for enemy in enemies:
         # Проверка столкновения между игроком и врагом
         if math.sqrt((player.x - enemy.x) ** 2 + (player.y - enemy.y) ** 2) < FONT_SIZE:
-            # Если враг красный, наносим урон
-            if enemy.color == ENEMY_COLOR and current_time - enemy.last_hit_time > DAMAGE_COOLDOWN:
+            # Если враг красный или босс в состоянии атаки
+            if (enemy.color == ENEMY_COLOR or (isinstance(enemy, Boss) and enemy.is_red)) and current_time - enemy.last_hit_time > DAMAGE_COOLDOWN:
                 enemy.last_hit_time = current_time
                 damage = enemy.damage
                 player_died = player.apply_damage(damage)
-                damage_numbers.append(DamageNumber(player.x, player.y, round(damage, 1), (255, 0, 0)))
+                damage_numbers.append(DamageNumber(player.x, player.y, round(player.last_damage_taken, 1), (255, 0, 0)))
                 if player_died:
                     return True  # Сигнализирует о завершении игры
 
@@ -584,8 +701,10 @@ def handle_collisions(player, enemies, damage_numbers, wave, wave_start_time, pr
 
                 # Получение опыта за убийство врага
                 if enemy.is_dead:
-                    if enemy.is_shooter:
-                        exp_gain = round(1.2 + 0.1 * wave, 1)  # Стрелки дают больше опыта
+                    if isinstance(enemy, Boss):
+                        exp_gain = round(10 + 5 * wave, 1)  # Босс дает больше опыта
+                    elif enemy.is_shooter:
+                        exp_gain = round(1.2 + 0.1 * wave, 1)
                     else:
                         exp_gain = round(0.9 + 0.1 * wave, 1)
                     player.gain_exp(exp_gain)
@@ -602,7 +721,7 @@ def handle_collisions(player, enemies, damage_numbers, wave, wave_start_time, pr
             projectiles.remove(projectile)
             damage = projectile.damage
             player_died = player.apply_damage(damage)
-            damage_numbers.append(DamageNumber(player.x, player.y + 30, round(damage, 1), (255, 0, 0)))
+            damage_numbers.append(DamageNumber(player.x, player.y + 30, round(player.last_damage_taken, 1), (255, 0, 0)))
             if player_died:
                 return True
 
@@ -650,7 +769,8 @@ def upgrade_menu(player):
                     selected = "damage"
                     pygame.mixer.Sound.play(upgrade_select_sound)
                 elif event.key == pygame.K_3:
-                    player.defense_upgrade_count += 1  # Увеличиваем счетчик улучшений защиты
+                    player.defense_upgrade_count += 1
+                    player.defense = 0.2 * player.defense_upgrade_count  # Обновляем значение защиты
                     selected = "defense"
                     pygame.mixer.Sound.play(upgrade_select_sound)
         clock.tick(60)
@@ -903,7 +1023,9 @@ def main():
     cursor_symbol = font.render('`', True, cursor_color)
     running = True
     esc_hold_start_time = None  # Время начала удержания клавиши Esc
-    esc_hold_duration = 2000    # Время в миллисекундах для выхода в меню (2 секунды)
+    esc_hold_duration = 1000    # Время в миллисекундах для выхода в меню
+    esc_pressed_during_pause = False  # Флаг, указывающий, что Esc был нажат во время паузы
+    boss_appearance_number = 1  # Счетчик появлений босса
 
     while running:
         delta_time = clock.tick(60)
@@ -917,11 +1039,20 @@ def main():
                     if not paused:
                         paused = True
                         esc_hold_start_time = None  # Сбрасываем время удержания
+                        esc_pressed_during_pause = False
                     else:
                         esc_hold_start_time = pygame.time.get_ticks()  # Начинаем отсчет удержания
+                        esc_pressed_during_pause = True
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_ESCAPE:
-                    esc_hold_start_time = None  # Сбрасываем время удержания при отпускании клавиши
+                    if paused and esc_pressed_during_pause:
+                        hold_time = pygame.time.get_ticks() - esc_hold_start_time if esc_hold_start_time else 0
+                        if hold_time < esc_hold_duration:
+                            # Короткое нажатие, отжимаем паузу
+                            paused = False
+                        # Сбрасываем флаги
+                        esc_hold_start_time = None
+                        esc_pressed_during_pause = False
 
         if not paused:
             screen.fill(BACKGROUND_COLOR)
@@ -935,8 +1066,22 @@ def main():
             if not enemies:
                 if player.hp > 0:
                     wave_countdown()
-                    wave_start_time = pygame.time.get_ticks()  # Отслеживание начала волны
-                    enemies = spawn_enemies(wave * INITIAL_ENEMY_COUNT, wave)
+                    wave_start_time = pygame.time.get_ticks()
+                    # Проверяем, является ли текущая волна боссовой
+                    if wave % 10 == 5:
+                        in_boss_fight = True
+                        # Останавливаем основную музыку
+                        pygame.mixer.music.stop()
+                        # Воспроизводим музыку босса
+                        boss_music.play(-1)
+                        # Спавним босса
+                        boss = Boss(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, boss_appearance_number)
+                        enemies.append(boss)
+                        boss_appearance_number += 1
+                    else:
+                        in_boss_fight = False
+                        # Обычный спавн врагов
+                        enemies = spawn_enemies(wave * INITIAL_ENEMY_COUNT, wave)
                     wave += 1
                 else:
                     pygame.mixer.Sound.play(game_over_sound)
@@ -949,19 +1094,55 @@ def main():
             # Обновление и отображение врагов и снарядов
             for enemy in enemies:
                 enemy.move_towards_player(player.x, player.y, enemies)
-                enemy.update(delta_time)
-                if not enemy.is_dead:
-                    if isinstance(enemy, SuicideEnemy):
-                        symbol = enemy.symbol
+                if isinstance(enemy, Boss):
+                    enemy.update(delta_time, player.x, player.y, projectiles)
+                    symbol = enemy.symbol
+                    # Проверка состояния босса для отображения цвета
+                    if enemy.is_red:
+                        color = ENEMY_COLOR  # Красный цвет
                     else:
-                        if enemy.is_shooter:
-                            projectile = enemy.shoot(player.x, player.y)
-                            if projectile:
-                                projectiles.append(projectile)
-                            symbol = SHOOTER_SYMBOL
+                        color = enemy.color
+                    draw_text(symbol, boss_font, color, enemy.x, enemy.y)
+                else:
+                    enemy.update(delta_time)
+                    if not enemy.is_dead:
+                        if isinstance(enemy, SuicideEnemy):
+                            symbol = enemy.symbol
                         else:
-                            symbol = ENEMY_SYMBOL
-                    draw_text(symbol, font, enemy.color, enemy.x, enemy.y)
+                            if enemy.is_shooter:
+                                projectile = enemy.shoot(player.x, player.y)
+                                if projectile:
+                                    projectiles.append(projectile)
+                                symbol = SHOOTER_SYMBOL
+                            else:
+                                symbol = ENEMY_SYMBOL
+                        draw_text(symbol, font, enemy.color, enemy.x, enemy.y)
+                        
+            # Отображение полоски здоровья босса
+            for enemy in enemies:
+                if isinstance(enemy, Boss):
+                    # Размеры полоски HP
+                    bar_width = SCREEN_WIDTH * 0.6
+                    bar_height = 20
+                    bar_x = (SCREEN_WIDTH - bar_width) / 2
+                    bar_y = SCREEN_HEIGHT - bar_height - 30  # Отступ от нижнего края
+
+                    # Рисуем белую рамку
+                    pygame.draw.rect(screen, (255, 255, 255), (bar_x, bar_y, bar_width, bar_height), 2)  # Толщина рамки 2 пикселя
+
+                    # Вычисляем ширину заполненной части
+                    filled_width = (bar_width - 4) * (enemy.hp / enemy.max_hp)  # Вычитаем 4 пикселя для учёта рамки
+                    if filled_width < 0:
+                        filled_width = 0  # Чтобы не было отрицательной ширины
+
+                    # Рисуем заполненную часть
+                    pygame.draw.rect(screen, (255, 255, 255), (bar_x + 2, bar_y + 2, filled_width, bar_height - 4))
+
+                    # Отображаем текст "Boss" над полоской HP
+                    boss_text = font.render("Boss", True, (255, 255, 255))
+                    text_rect = boss_text.get_rect(center=(SCREEN_WIDTH / 2, bar_y - 20))  # 20 пикселей выше полоски
+                    screen.blit(boss_text, text_rect)
+                    break  # Босс только один
                     
             for enemy in enemies[:]:
                 if enemy.is_dead and isinstance(enemy, SuicideEnemy):
@@ -1020,6 +1201,14 @@ def main():
 
             # Удаление мертвых врагов
             enemies = [enemy for enemy in enemies if not enemy.is_dead]
+            
+            if not enemies:
+                if in_boss_fight:
+                    in_boss_fight = False
+                    # Останавливаем музыку босса
+                    boss_music.stop()
+                    # Запускаем основную музыку
+                    pygame.mixer.music.play(-1)
 
             pygame.display.flip()
         else:
@@ -1034,12 +1223,13 @@ def main():
 
             pygame.display.flip()
 
-            # Проверка удержания клавиши Esc
+            # Проверка удержания клавиши Esc для выхода в меню
             if esc_hold_start_time is not None:
                 hold_time = pygame.time.get_ticks() - esc_hold_start_time
                 if hold_time >= esc_hold_duration:
                     # Выход в главное меню
                     return  # Возвращаемся из функции main(), что приведет к возврату в главное меню
+                pass
 
     pygame.quit()
 
