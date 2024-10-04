@@ -155,6 +155,7 @@ game_over_sound = pygame.mixer.Sound(os.path.join(base_path, 'audio', 'game_over
 pygame.mixer.music.load(os.path.join(base_path, 'audio', 'background_music.wav'))
 
 shooter_fire_channel = pygame.mixer.Channel(5)
+music_channel = pygame.mixer.Channel(6)
 
 # Применение начальных настроек
 apply_display_settings()
@@ -1073,7 +1074,8 @@ def main():
                         # Останавливаем основную музыку
                         pygame.mixer.music.stop()
                         # Воспроизводим музыку босса
-                        boss_music.play(-1)
+                        if not music_channel.get_busy():
+                            music_channel.play(boss_music, -1)
                         # Спавним босса
                         boss = Boss(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, boss_appearance_number)
                         enemies.append(boss)
@@ -1181,7 +1183,7 @@ def main():
                 if in_boss_fight:
                     in_boss_fight = False
                     boss_music.stop()
-                    pygame.mixer.music.play(-1)
+                    pygame.mixer.music.play(-1, 0.0)
 
                 return  # Возврат в главное меню
 
@@ -1208,14 +1210,6 @@ def main():
 
             # Удаление мертвых врагов
             enemies = [enemy for enemy in enemies if not enemy.is_dead]
-            
-            if not enemies:
-                if in_boss_fight:
-                    in_boss_fight = False
-                    # Останавливаем музыку босса
-                    boss_music.stop()
-                    # Запускаем основную музыку
-                    pygame.mixer.music.play(-1)
 
             pygame.display.flip()
         else:
