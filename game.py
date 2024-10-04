@@ -332,6 +332,10 @@ class Enemy:
         self.x += move_x
         self.y += move_y
 
+        # Ограничение позиции врага в пределах границ экрана
+        self.x = max(0, min(self.x, SCREEN_WIDTH - FONT_SIZE))
+        self.y = max(0, min(self.y, SCREEN_HEIGHT - FONT_SIZE))
+
     def avoid_collisions(self, move_x, move_y, enemies):
         for other in enemies:
             if other != self:
@@ -442,6 +446,42 @@ class Enemy:
                 self.shaking = False
                 self.color = ENEMY_DEFAULT_COLOR
                 self.damage_timer = random.randint(1000, 3000) + random.randint(0, 5000)
+                
+class SuicideEnemy(Enemy):
+    def __init__(self, x, y, wave=1):
+        super().__init__(x, y, is_shooter=False, wave=wave)
+        self.symbol = 'o'
+        self.hp = 3 * (1 + 0.05 * (wave - 1))  # Базовое HP увеличивается с волнами
+        self.shaking = False
+        self.shake_start_time = None
+        self.shake_duration = 2500  # Длительность тряски перед взрывом
+        self.explode = False  # Флаг для взрыва
+        self.wave = wave
+
+    def take_damage(self, damage):
+        self.hp -= damage
+        if self.hp <= 0:
+            self.hp = 0
+            if not self.shaking:
+                self.is_dead = True  # Враг умирает сразу, без взрыва
+        else:
+            if not self.shaking:
+                self.shaking = True
+                self.shake_start_time = pygame.time.get_ticks()
+
+    def update(self, delta_time):
+        if self.shaking:
+            elapsed_time = pygame.time.get_ticks() - self.shake_start_time
+            if elapsed_time < self.shake_duration:
+                # Тряска врага
+                self.x += random.randint(-SHAKE_INTENSITY, SHAKE_INTENSITY)
+                self.y += random.randint(-SHAKE_INTENSITY, SHAKE_INTENSITY)
+            else:
+                self.is_dead = True
+                self.explode = True  # Враг должен взорваться и выпустить снаряды
+        else:
+            # Обычное поведение движения к игроку
+            pass  # Движение обрабатывается в основном цикле или методом move_towards_player
 
 # Класс для отображения чисел урона
 # Класс для отображения чисел урона и других чисел
@@ -496,8 +536,13 @@ def spawn_enemies(count, wave):
     for _ in range(count):
         x = random.randint(0, SCREEN_WIDTH)
         y = random.randint(0, SCREEN_HEIGHT)
-        is_shooter = random.random() < 0.3  # 30% шанс быть стрелком
-        enemies.append(Enemy(x, y, is_shooter, wave))
+        enemy_type_chance = random.random()
+        if enemy_type_chance < 0.15:
+            # 15% шанс спауна SuicideEnemy
+            enemies.append(SuicideEnemy(x, y, wave))
+        else:
+            is_shooter = random.random() < 0.3  # 30% шанс быть стрелком
+            enemies.append(Enemy(x, y, is_shooter, wave))
     return enemies
 
 def draw_text(text, font, color, x, y):
@@ -889,12 +934,35 @@ def main():
                 enemy.move_towards_player(player.x, player.y, enemies)
                 enemy.update(delta_time)
                 if not enemy.is_dead:
-                    if enemy.is_shooter:
-                        projectile = enemy.shoot(player.x, player.y)
-                        if projectile:
-                            projectiles.append(projectile)
-                    symbol = SHOOTER_SYMBOL if enemy.is_shooter else ENEMY_SYMBOL
+                    if isinstance(enemy, SuicideEnemy):
+                        symbol = enemy.symbol
+                    else:
+                        if enemy.is_shooter:
+                            projectile = enemy.shoot(player.x, player.y)
+                            if projectile:
+                                projectiles.append(projectile)
+                            symbol = SHOOTER_SYMBOL
+                        else:
+                            symbol = ENEMY_SYMBOL
                     draw_text(symbol, font, enemy.color, enemy.x, enemy.y)
+                    
+            for enemy in enemies[:]:
+                if enemy.is_dead and isinstance(enemy, SuicideEnemy):
+                    if enemy.explode:
+                        # Воспроизводим звук взрыва или выстрела
+                        if not shooter_fire_channel.get_busy():
+                            shooter_fire_channel.play(shooter_fire_sound)
+                        
+                        # Враг взрывается и выпускает снаряды
+                        num_projectiles = min(6 + enemy.wave, 12)
+                        angle_between_projectiles = 360 / num_projectiles
+                        for i in range(num_projectiles):
+                            angle = math.radians(i * angle_between_projectiles)
+                            dx = math.cos(angle)
+                            dy = math.sin(angle)
+                            projectile = Projectile(enemy.x, enemy.y, dx, dy, enemy.damage)
+                            projectiles.append(projectile)
+                    enemies.remove(enemy)  # Удаляем врага из списка
 
             for projectile in projectiles[:]:
                 if not projectile.update(player.x, player.y):
