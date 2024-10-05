@@ -1212,11 +1212,11 @@ def main():
                         filled_width = 0  # Чтобы не было отрицательной ширины
 
                     # Рисуем заполненную часть
-                    pygame.draw.rect(screen, (255, 255, 255), (bar_x + 1, bar_y + 1, filled_width, bar_height - 2))
+                    pygame.draw.rect(screen, (162, 68, 43), (bar_x + 1, bar_y + 1, filled_width, bar_height - 2))
 
                     # Отображаем текст "Boss" над полоской HP
                     boss_text = font.render("Boss", True, (255, 255, 255))
-                    text_rect = boss_text.get_rect(center=(SCREEN_WIDTH / 2, bar_y - 20))  # 20 пикселей выше полоски
+                    text_rect = boss_text.get_rect(center=(SCREEN_WIDTH / 2, bar_y - 10))
                     screen.blit(boss_text, text_rect)
                     break  # Босс только один
                     
@@ -1310,6 +1310,10 @@ def main():
             if esc_hold_start_time is not None:
                 hold_time = pygame.time.get_ticks() - esc_hold_start_time
                 if hold_time >= esc_hold_duration:
+                    if in_boss_fight:
+                        in_boss_fight = False
+                        boss_music.stop()
+                        pygame.mixer.music.play(-1, 0.0)
                     # Выход в главное меню
                     return  # Возвращаемся из функции main(), что приведет к возврату в главное меню
                 pass
