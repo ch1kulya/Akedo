@@ -16,9 +16,9 @@ def load_settings():
     default_settings = {
         'resolution': '800x600',
         'fullscreen': 'False',
-        'volume_music': '1.0',
-        'volume_hits': '1.0',
-        'volume_other': '1.0'
+        'volume_music': '0.5',
+        'volume_hits': '0.5',
+        'volume_other': '0.5'
     }
     
     if os.path.exists(config_file):
@@ -1067,10 +1067,10 @@ def adjust_volume(volume_key):
                 sys.exit()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_LEFT:
-                    settings[volume_key] = max(0.0, settings[volume_key] - 0.1)
+                    settings[volume_key] = max(0.0, settings[volume_key] - 0.05)
                     apply_volume_settings()
                 elif event.key == pygame.K_RIGHT:
-                    settings[volume_key] = min(1.0, settings[volume_key] + 0.1)
+                    settings[volume_key] = min(1.0, settings[volume_key] + 0.05)
                     apply_volume_settings()
                 elif event.key == pygame.K_RETURN or event.key == pygame.K_ESCAPE:
                     adjusting = False
