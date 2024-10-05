@@ -170,7 +170,7 @@ boss_music = pygame.mixer.Sound(os.path.join(base_path, 'audio', 'boss_theme.wav
 boss_music.set_volume(settings['volume_music'])
 
 # Установка заголовка окна
-pygame.display.set_caption('<Ākēdo>')
+pygame.display.set_caption('Ākēdo')
 
 # Настройка шрифтов
 font = pygame.font.SysFont('Courier', FONT_SIZE)
@@ -840,11 +840,11 @@ def save_settings(settings):
 
 def main_menu():
     menu_running = True
-    selected_option = 0  # 0: Начать игру, 1: Настройки, 2: Выход
+    selected_option = 0  # 0: Начать игру, 1: Настройки, 2: How to play, 3: Выход
 
     menu_font = pygame.font.SysFont('Courier', 48)
 
-    options = ['Start Game', 'Settings', 'Exit']
+    options = ['Start Game', 'Settings', 'How to Play', 'Exit']
 
     while menu_running:
         for event in pygame.event.get():
@@ -858,13 +858,16 @@ def main_menu():
                     selected_option = (selected_option + 1) % len(options)
                 elif event.key == pygame.K_RETURN:
                     if selected_option == 0:
-                        # Начать игру
+                        # Start Game
                         menu_running = False
                     elif selected_option == 1:
-                        # Открыть настройки
+                        # Settings
                         settings_menu()
                     elif selected_option == 2:
-                        # Выход
+                        # How to Play
+                        how_to_play_menu()
+                    elif selected_option == 3:
+                        # Exit
                         pygame.quit()
                         sys.exit()
 
@@ -872,8 +875,8 @@ def main_menu():
         screen.fill(BACKGROUND_COLOR)
 
         # Отображение названия игры
-        title_text = menu_font.render('<Ākēdo>', True, TEXT_COLOR)
-        screen.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, 100))
+        title_text = menu_font.render('Ākēdo', True, TEXT_COLOR)
+        screen.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, 150))
 
         # Отображение опций меню
         for i, option in enumerate(options):
@@ -882,7 +885,55 @@ def main_menu():
             else:
                 option_display = option
             option_text = font.render(option_display, True, TEXT_COLOR)
-            screen.blit(option_text, (SCREEN_WIDTH // 2 - option_text.get_width() // 2, 250 + i * 50))
+            screen.blit(option_text, (SCREEN_WIDTH // 2 - option_text.get_width() // 2, 240 + i * 50))
+
+        pygame.display.flip()
+        clock.tick(60)
+        
+def how_to_play_menu():
+    how_to_play_running = True
+    back_option = 'Press ESC to return to the main menu.'
+    
+    instructions = [
+        "How to Play",
+        "",
+        "To begin with, the character '@' will follow your cursor.",
+        "All you have to do is touch enemies to deal damage and kill.",
+        "However, you should be careful as they may respond.",
+        "Collect health pickups '+' to restore HP.",
+        "Enemies become stronger with each wave.",
+        "To keep up you need to upgrade wisely.",
+        "Good luck!",
+        "",
+        back_option
+    ]
+
+    while how_to_play_running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    how_to_play_running = False
+
+        # Очистка экрана
+        screen.fill(BACKGROUND_COLOR)
+
+        # Отображение инструкций
+        y_offset = SCREEN_HEIGHT // 2 - 250 # Начальная позиция по Y
+        for line in instructions:
+            if line == "How to Play":
+                # Заголовок
+                line_text = pygame.font.SysFont('Courier', 36).render(line, True, TEXT_COLOR)
+            elif line == back_option:
+                # Подсказка для возврата
+                line_text = pygame.font.SysFont('Courier', 24).render(line, True, TEXT_COLOR)
+            else:
+                # Основные инструкции
+                line_text = pygame.font.SysFont('Courier', 20).render(line, True, TEXT_COLOR)
+            screen.blit(line_text, (SCREEN_WIDTH // 2 - line_text.get_width() // 2, y_offset))
+            y_offset += 40  # Отступ между строками
 
         pygame.display.flip()
         clock.tick(60)
