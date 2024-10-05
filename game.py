@@ -170,7 +170,7 @@ boss_music = pygame.mixer.Sound(os.path.join(base_path, 'audio', 'boss_theme.wav
 boss_music.set_volume(settings['volume_music'])
 
 # Установка заголовка окна
-pygame.display.set_caption('<The Game>')
+pygame.display.set_caption('<Ākēdo>')
 
 # Настройка шрифтов
 font = pygame.font.SysFont('Courier', FONT_SIZE)
@@ -857,7 +857,7 @@ def main_menu():
         screen.fill(BACKGROUND_COLOR)
 
         # Отображение названия игры
-        title_text = menu_font.render('<The Game>', True, TEXT_COLOR)
+        title_text = menu_font.render('<Ākēdo>', True, TEXT_COLOR)
         screen.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, 100))
 
         # Отображение опций меню
