@@ -199,8 +199,6 @@ class Player:
         self.hp_upgrade_count = 0  # Количество улучшений HP
         self.defense_upgrade_count = 0  # Количество улучшений защиты
         self.health_pickup_heal_amount = 1  # Начальное количество восстанавливаемого HP аптечкой
-        self.invincibility_start_time = 0  # Время начала неуязвимости
-        self.invincibility_duration = 30  # Продолжительность неуязвимости (в миллисекундах)
 
     def move(self, target_x, target_y):
         direction_x = target_x - self.x
@@ -229,15 +227,12 @@ class Player:
 
     def apply_damage(self, damage):
         current_time = pygame.time.get_ticks()
-        if current_time - self.invincibility_start_time < self.invincibility_duration:
-            return False  # Игрок временно неуязвим
 
         # Защита уменьшает урон на 0.2 за каждое улучшение
         damage_reduction = 0.2 * self.defense_upgrade_count
         actual_damage = max(0.1, damage - damage_reduction)  # Урон не может быть меньше 0.1
         self.hp -= actual_damage
         self.last_damage_taken = actual_damage  # Сохраняем фактический урон для отображения
-        self.invincibility_start_time = current_time  # Обновляем время начала неуязвимости
         if self.hp <= 0:
             self.hp = 0
             pygame.mixer.Sound.play(damage_sound)
@@ -269,7 +264,7 @@ class Projectile:
         self.dx = dx
         self.dy = dy
         self.damage = damage  # Урон снаряда
-        self.lifetime = 2000  # Снаряды существуют 2 секунды
+        self.lifetime = 1500  # Снаряды существуют 1.5 секунды
         self.speed = 3  # Начальная скорость снаряда
         self.start_time = pygame.time.get_ticks()
         self.follow_player = follow_player  # Следовать за игроком
@@ -278,7 +273,7 @@ class Projectile:
         elapsed_time = pygame.time.get_ticks() - self.start_time
         if elapsed_time > self.lifetime:
             return False  # Снаряд исчезает
-        self.speed = max(self.speed - 0.02, 0)  # Постепенное замедление снаряда
+        self.speed = max(self.speed - 0.019, 0)  # Постепенное замедление снаряда
 
         if self.follow_player and player_x is not None and player_y is not None:
             # Если снаряд должен следовать за игроком
@@ -294,7 +289,27 @@ class Projectile:
         return True
 
     def draw(self, surface):
-        draw_text(PROJECTILE_SYMBOL, font, PROJECTILE_COLOR, int(self.x), int(self.y))
+        elapsed_time = pygame.time.get_ticks() - self.start_time
+        
+        # Время для увеличения и уменьшения
+        grow_duration = 300  # Время увеличения снаряда (300 мс)
+        shrink_duration = 500  # Время уменьшения снаряда (500 мс)
+        final_shrink_start = self.lifetime - shrink_duration
+
+        # Рассчитаем размер снаряда в зависимости от времени
+        if elapsed_time < grow_duration:
+            scale = 1 + (elapsed_time / grow_duration) * 0.5  # Увеличивается на 50%
+        elif elapsed_time > final_shrink_start:
+            shrink_factor = (self.lifetime - elapsed_time) / shrink_duration
+            scale = 1 + 0.5 * shrink_factor  # Уменьшение в последние 500 мс
+        else:
+            scale = 1.5  # Стандартный размер после увеличения
+
+        # Создаем шрифт с изменённым размером
+        dynamic_font = pygame.font.Font(None, int(FONT_SIZE * scale))
+
+        # Отрисуем снаряд с учетом нового размера
+        draw_text(PROJECTILE_SYMBOL, dynamic_font, PROJECTILE_COLOR, int(self.x), int(self.y))
 
     def is_colliding(self, player):
         return math.sqrt((player.x - self.x) ** 2 + (player.y - self.y) ** 2) < FONT_SIZE
@@ -598,11 +613,11 @@ class Boss(Enemy):
             projectiles.append(projectile)
 
     def burst_shot(self, player_x, player_y, projectiles):
-        # Босс стреляет очередью из 3-5 снарядов в игрока
-        num_shots = random.randint(3, 5)
+        # Босс стреляет очередью из 5-10 снарядов в игрока
+        num_shots = random.randint(5, 10)
         for _ in range(num_shots):
-            dx = player_x - self.x + random.uniform(-15, 15)  # Немного разброса
-            dy = player_y - self.y + random.uniform(-15, 15)
+            dx = player_x - self.x + random.uniform(-20, 20)  # Немного разброса
+            dy = player_y - self.y + random.uniform(-20, 20)
             distance = math.sqrt(dx ** 2 + dy ** 2)
             if distance > 0:
                 projectile = Projectile(self.x, self.y, dx / distance, dy / distance, self.projectile_damage)
@@ -1133,20 +1148,20 @@ def main():
                 if isinstance(enemy, Boss):
                     # Размеры полоски HP
                     bar_width = SCREEN_WIDTH * 0.6
-                    bar_height = 20
+                    bar_height = 18
                     bar_x = (SCREEN_WIDTH - bar_width) / 2
                     bar_y = SCREEN_HEIGHT - bar_height - 30  # Отступ от нижнего края
 
                     # Рисуем белую рамку
-                    pygame.draw.rect(screen, (255, 255, 255), (bar_x, bar_y, bar_width, bar_height), 2)  # Толщина рамки 2 пикселя
+                    pygame.draw.rect(screen, (255, 255, 255), (bar_x, bar_y, bar_width, bar_height), 1)  # Толщина рамки 1 пиксель
 
                     # Вычисляем ширину заполненной части
-                    filled_width = (bar_width - 4) * (enemy.hp / enemy.max_hp)  # Вычитаем 4 пикселя для учёта рамки
+                    filled_width = (bar_width - 2) * (enemy.hp / enemy.max_hp)  # Вычитаем 2 пикселя для учёта рамки
                     if filled_width < 0:
                         filled_width = 0  # Чтобы не было отрицательной ширины
 
                     # Рисуем заполненную часть
-                    pygame.draw.rect(screen, (255, 255, 255), (bar_x + 2, bar_y + 2, filled_width, bar_height - 4))
+                    pygame.draw.rect(screen, (255, 255, 255), (bar_x + 1, bar_y + 1, filled_width, bar_height - 2))
 
                     # Отображаем текст "Boss" над полоской HP
                     boss_text = font.render("Boss", True, (255, 255, 255))
