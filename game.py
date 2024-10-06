@@ -5,6 +5,7 @@ import time
 import sys
 import os
 import configparser
+import numpy as np
 
 base_path = os.path.dirname(os.path.abspath(__file__))
 
@@ -14,7 +15,7 @@ def load_settings():
     
     # Настройки по умолчанию
     default_settings = {
-        'resolution': '800x600',
+        'resolution': '1280x720',
         'fullscreen': 'False',
         'volume_music': '0.5',
         'volume_hits': '0.5',
@@ -65,7 +66,7 @@ cursor_color = (218, 136, 245)
 
 # Игровые константы
 SCREEN_WIDTH, SCREEN_HEIGHT = settings['resolution']
-FONT_SIZE = 24
+FONT_SIZE = 28
 PLAYER_SYMBOL = '@'
 ENEMY_SYMBOL = 'M'
 SHOOTER_SYMBOL = 'S'
@@ -137,6 +138,38 @@ def apply_volume_settings():
     
     # Сохраняем настройки
     save_settings(settings)
+    
+# Функция для создания цветовых сдвигов (chromatic aberration)
+def chromatic_aberration(surface):
+    r_surface = surface.copy()
+    g_surface = surface.copy()
+    b_surface = surface.copy()
+    
+    if (random.randint(1, 15) == 5):
+        # Сдвиг цветовых каналов
+        r_surface.scroll(random.randint(-1, 1), random.randint(-1, 1))
+        g_surface.scroll(random.randint(-1, 1), random.randint(-1, 1))
+        b_surface.scroll(random.randint(-1, 1), random.randint(-1, 1))
+
+    # Объединение каналов
+    return pygame.surfarray.make_surface(np.dstack([pygame.surfarray.array3d(r_surface)[:,:,0],
+                                                    pygame.surfarray.array3d(g_surface)[:,:,1],
+                                                    pygame.surfarray.array3d(b_surface)[:,:,2]]))
+
+# Функция для создания горизонтальных полос (scanlines)
+def apply_scanlines(surface, intensity=30, alpha=151):
+    # Создаем поверхность для линий с поддержкой прозрачности
+    scanline_surface = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
+    
+    # Цвет линий с заданным уровнем прозрачности (alpha)
+    line_color = (intensity, intensity, intensity, alpha)
+
+    # Рисуем линии через одну строку
+    for y in range(0, surface.get_height(), 2):
+        pygame.draw.line(scanline_surface, line_color, (0, y), (surface.get_width(), y), 1)
+
+    # Накладываем полупрозрачные линии на исходную поверхность
+    surface.blit(scanline_surface, (0, 0))
 
 # Загрузка звуков из папки audio
 hit_sounds = [
@@ -754,7 +787,7 @@ def handle_collisions(player, enemies, damage_numbers, wave, wave_start_time, pr
 def upgrade_menu(player):
     selected = None
     upgrade_font = pygame.font.SysFont('Courier', 36)
-    hint_font = pygame.font.SysFont('Courier', 24)  # Шрифт для подсказки
+    hint_font = pygame.font.SysFont('Courier', 28)  # Шрифт для подсказки
     while selected is None:
         screen.fill(BACKGROUND_COLOR)
         # Отображение заголовка меню улучшений
@@ -768,6 +801,15 @@ def upgrade_menu(player):
         # Добавление подсказки внизу
         hint_text = hint_font.render("Press 1, 2, or 3 to select an upgrade.", True, TEXT_COLOR)
         screen.blit(hint_text, (SCREEN_WIDTH // 2 - hint_text.get_width() // 2, SCREEN_HEIGHT - 100))
+        
+        # Применение VHS эффектов
+        chromatic_surface = chromatic_aberration(screen.copy())
+        apply_scanlines(chromatic_surface)
+
+        # Наложение VHS эффекта на экран
+        chromatic_surface.blit(chromatic_surface, (0, 0))
+        screen.blit(chromatic_surface, (0, 0))
+        
         pygame.display.flip()
 
         for event in pygame.event.get():
@@ -816,6 +858,13 @@ def wave_countdown():
         screen.fill(BACKGROUND_COLOR)
         countdown_text = font.render(f'Next wave in {seconds_left}...', True, TEXT_COLOR)
         screen.blit(countdown_text, (SCREEN_WIDTH // 2 - countdown_text.get_width() // 2, SCREEN_HEIGHT // 2))
+        # Применение VHS эффектов
+        chromatic_surface = chromatic_aberration(screen.copy())
+        apply_scanlines(chromatic_surface)
+
+        # Наложение VHS эффекта на экран
+        chromatic_surface.blit(chromatic_surface, (0, 0))
+        screen.blit(chromatic_surface, (0, 0))
         pygame.display.flip()
         # Обработка событий для предотвращения зависания
         for event in pygame.event.get():
@@ -842,7 +891,7 @@ def main_menu():
     menu_running = True
     selected_option = 0  # 0: Начать игру, 1: Настройки, 2: How to play, 3: Выход
 
-    menu_font = pygame.font.SysFont('Courier', 48)
+    menu_font = pygame.font.SysFont('Courier', 56)
 
     options = ['Start Game', 'Settings', 'How to Play', 'Exit']
 
@@ -886,6 +935,14 @@ def main_menu():
                 option_display = option
             option_text = font.render(option_display, True, TEXT_COLOR)
             screen.blit(option_text, (SCREEN_WIDTH // 2 - option_text.get_width() // 2, 240 + i * 50))
+        
+        # Применение VHS эффектов
+        chromatic_surface = chromatic_aberration(screen.copy())
+        apply_scanlines(chromatic_surface)
+
+        # Наложение VHS эффекта на экран
+        chromatic_surface.blit(chromatic_surface, (0, 0))
+        screen.blit(chromatic_surface, (0, 0))
 
         pygame.display.flip()
         clock.tick(60)
@@ -928,12 +985,20 @@ def how_to_play_menu():
                 line_text = pygame.font.SysFont('Courier', 36).render(line, True, TEXT_COLOR)
             elif line == back_option:
                 # Подсказка для возврата
-                line_text = pygame.font.SysFont('Courier', 24).render(line, True, TEXT_COLOR)
+                line_text = pygame.font.SysFont('Courier', 28).render(line, True, TEXT_COLOR)
             else:
                 # Основные инструкции
-                line_text = pygame.font.SysFont('Courier', 20).render(line, True, TEXT_COLOR)
+                line_text = pygame.font.SysFont('Courier', 28).render(line, True, TEXT_COLOR)
             screen.blit(line_text, (SCREEN_WIDTH // 2 - line_text.get_width() // 2, y_offset))
             y_offset += 40  # Отступ между строками
+            
+        # Применение VHS эффектов
+        chromatic_surface = chromatic_aberration(screen.copy())
+        apply_scanlines(chromatic_surface)
+
+        # Наложение VHS эффекта на экран
+        chromatic_surface.blit(chromatic_surface, (0, 0))
+        screen.blit(chromatic_surface, (0, 0))
 
         pygame.display.flip()
         clock.tick(60)
@@ -973,7 +1038,7 @@ def settings_menu():
 
         # Отображение заголовка меню настроек
         settings_title = pygame.font.SysFont('Courier', 48).render('Settings', True, TEXT_COLOR)
-        screen.blit(settings_title, (SCREEN_WIDTH // 2 - settings_title.get_width() // 2, 50))
+        screen.blit(settings_title, (SCREEN_WIDTH // 2 - settings_title.get_width() // 2, 150))
 
         # Отображение опций настроек с текущими значениями
         for i, option in enumerate(options):
@@ -997,7 +1062,15 @@ def settings_menu():
             if i == selected_option:
                 option_display = '> ' + option_display
             option_text = font.render(option_display, True, TEXT_COLOR)
-            screen.blit(option_text, (SCREEN_WIDTH // 2 - option_text.get_width() // 2, 150 + i * 40))
+            screen.blit(option_text, (SCREEN_WIDTH // 2 - option_text.get_width() // 2, 230 + i * 50))
+            
+        # Применение VHS эффектов
+        chromatic_surface = chromatic_aberration(screen.copy())
+        apply_scanlines(chromatic_surface)
+
+        # Наложение VHS эффекта на экран
+        chromatic_surface.blit(chromatic_surface, (0, 0))
+        screen.blit(chromatic_surface, (0, 0))
 
         pygame.display.flip()
         clock.tick(60)
@@ -1009,13 +1082,17 @@ def change_resolution():
     
     # Добавляем текущие разрешения и стандартные варианты
     resolutions = [
-        (800, 600),
-        (1024, 768),
         (1280, 720),
         (1366, 768),
+        (1600, 768),
         (1600, 900),
+        (1776, 1000),
         (1920, 1080),
+        (2048, 1152),
+        (1856, 1392),
         (2560, 1440),
+        (3440, 1440),
+        (3840, 2160),
         current_display_resolution  # Добавляем текущее разрешение дисплея
     ]
     
@@ -1055,6 +1132,14 @@ def change_resolution():
         resolution_text = font.render(f"Resolution: {resolutions[res_selected][0]}x{resolutions[res_selected][1]}", True, TEXT_COLOR)
         screen.blit(resolution_text, (SCREEN_WIDTH // 2 - resolution_text.get_width() // 2, SCREEN_HEIGHT // 2))
 
+        # Применение VHS эффектов
+        chromatic_surface = chromatic_aberration(screen.copy())
+        apply_scanlines(chromatic_surface)
+
+        # Наложение VHS эффекта на экран
+        chromatic_surface.blit(chromatic_surface, (0, 0))
+        screen.blit(chromatic_surface, (0, 0))
+
         pygame.display.flip()
         clock.tick(60)
 
@@ -1082,6 +1167,14 @@ def adjust_volume(volume_key):
         volume_value = int(settings[volume_key] * 100)
         volume_text = font.render(f"{volume_key.replace('_', ' ').title()}: {volume_value}%", True, TEXT_COLOR)
         screen.blit(volume_text, (SCREEN_WIDTH // 2 - volume_text.get_width() // 2, SCREEN_HEIGHT // 2))
+
+        # Применение VHS эффектов
+        chromatic_surface = chromatic_aberration(screen.copy())
+        apply_scanlines(chromatic_surface)
+
+        # Наложение VHS эффекта на экран
+        chromatic_surface.blit(chromatic_surface, (0, 0))
+        screen.blit(chromatic_surface, (0, 0))
 
         pygame.display.flip()
         clock.tick(60)
@@ -1163,6 +1256,15 @@ def main():
                     pygame.mixer.Sound.play(game_over_sound)
                     game_over_text = pygame.font.SysFont('Courier', 48).render("Game Over", True, TEXT_COLOR)
                     screen.blit(game_over_text, (SCREEN_WIDTH // 2 - game_over_text.get_width() // 2, SCREEN_HEIGHT // 2 - 50))
+                    
+                    # Применение VHS эффектов
+                    chromatic_surface = chromatic_aberration(screen.copy())
+                    apply_scanlines(chromatic_surface)
+
+                    # Наложение VHS эффекта на экран
+                    chromatic_surface.blit(chromatic_surface, (0, 0))
+                    screen.blit(chromatic_surface, (0, 0))
+                    
                     pygame.display.flip()
                     time.sleep(2)
                     return  # Возврат в главное меню
@@ -1250,6 +1352,15 @@ def main():
                 pygame.mixer.Sound.play(game_over_sound)
                 game_over_text = pygame.font.SysFont('Courier', 48).render("Game Over", True, TEXT_COLOR)
                 screen.blit(game_over_text, (SCREEN_WIDTH // 2 - game_over_text.get_width() // 2, SCREEN_HEIGHT // 2 - 50))
+                
+                # Применение VHS эффектов
+                chromatic_surface = chromatic_aberration(screen.copy())
+                apply_scanlines(chromatic_surface)
+
+                # Наложение VHS эффекта на экран
+                chromatic_surface.blit(chromatic_surface, (0, 0))
+                screen.blit(chromatic_surface, (0, 0))
+                
                 pygame.display.flip()
                 time.sleep(2)
 
@@ -1293,6 +1404,14 @@ def main():
                     # Запускаем основную музыку
                     pygame.mixer.music.play(-1, 0.0)
 
+            # Применение VHS эффектов
+            chromatic_surface = chromatic_aberration(screen.copy())
+            apply_scanlines(chromatic_surface)
+
+            # Наложение VHS эффекта на экран
+            chromatic_surface.blit(chromatic_surface, (0, 0))
+            screen.blit(chromatic_surface, (0, 0))
+
             pygame.display.flip()
         else:
             # Отображение состояния паузы
@@ -1300,7 +1419,7 @@ def main():
             screen.blit(pause_text, (SCREEN_WIDTH // 2 - pause_text.get_width() // 2, SCREEN_HEIGHT // 2 - 50))
 
             # Отображение подсказки о выходе в меню
-            hint_font = pygame.font.SysFont('Courier', 24)
+            hint_font = pygame.font.SysFont('Courier', 28)
             hint_text = hint_font.render("Hold Esc to return to menu.", True, TEXT_COLOR)
             screen.blit(hint_text, (SCREEN_WIDTH // 2 - hint_text.get_width() // 2, SCREEN_HEIGHT - 100))
 
