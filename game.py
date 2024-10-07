@@ -141,32 +141,48 @@ def apply_volume_settings():
     
 # Функция для создания цветовых сдвигов (chromatic aberration)
 def chromatic_aberration(surface):
-    r_surface = surface.copy()
-    g_surface = surface.copy()
-    b_surface = surface.copy()
-    
-    if (random.randint(1, 15) == 5):
-        # Сдвиг цветовых каналов
-        r_surface.scroll(random.randint(-1, 1), random.randint(-1, 1))
-        g_surface.scroll(random.randint(-1, 1), random.randint(-1, 1))
-        b_surface.scroll(random.randint(-1, 1), random.randint(-1, 1))
+    if random.randint(1, 15) == 5:
+        # Получаем массивы цветовых каналов только один раз
+        arr = pygame.surfarray.pixels3d(surface)
 
-    # Объединение каналов
-    return pygame.surfarray.make_surface(np.dstack([pygame.surfarray.array3d(r_surface)[:,:,0],
-                                                    pygame.surfarray.array3d(g_surface)[:,:,1],
-                                                    pygame.surfarray.array3d(b_surface)[:,:,2]]))
+        # Создаем копии каждого цветового канала
+        r_arr = arr[:,:,0].copy()
+        g_arr = arr[:,:,1].copy()
+        b_arr = arr[:,:,2].copy()
+
+        # Случайные сдвиги для каналов
+        shift_x, shift_y = random.randint(-1, 1), random.randint(-1, 1)
+        r_arr = np.roll(r_arr, shift_x, axis=0)
+        r_arr = np.roll(r_arr, shift_y, axis=1)
+        g_arr = np.roll(g_arr, random.randint(-1, 1), axis=0)
+        g_arr = np.roll(g_arr, random.randint(-1, 1), axis=1)
+        b_arr = np.roll(b_arr, random.randint(-1, 1), axis=0)
+        b_arr = np.roll(b_arr, random.randint(-1, 1), axis=1)
+
+        # Собираем снова в одно изображение
+        result_surface = pygame.surfarray.make_surface(np.dstack([r_arr, g_arr, b_arr]))
+        return result_surface
+    else:
+        return surface
 
 # Функция для создания горизонтальных полос (scanlines)
-def apply_scanlines(surface, intensity=30, alpha=151):
-    # Создаем поверхность для линий с поддержкой прозрачности
-    scanline_surface = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
-    
-    # Цвет линий с заданным уровнем прозрачности (alpha)
-    line_color = (intensity, intensity, intensity, alpha)
+scanline_surface_cache = {}
 
-    # Рисуем линии через одну строку
-    for y in range(0, surface.get_height(), 2):
-        pygame.draw.line(scanline_surface, line_color, (0, y), (surface.get_width(), y), 1)
+def apply_scanlines(surface, intensity=30, alpha=151):
+    # Кэширование поверхности с линиями
+    size = surface.get_size()
+    if size not in scanline_surface_cache:
+        scanline_surface = pygame.Surface(size, pygame.SRCALPHA)
+        line_color = (intensity, intensity, intensity, alpha)
+
+        # Рисуем линии через одну строку
+        for y in range(0, surface.get_height(), 2):
+            pygame.draw.line(scanline_surface, line_color, (0, y), (surface.get_width(), y), 1)
+        
+        # Кэшируем результат
+        scanline_surface_cache[size] = scanline_surface
+    else:
+        scanline_surface = scanline_surface_cache[size]
 
     # Накладываем полупрозрачные линии на исходную поверхность
     surface.blit(scanline_surface, (0, 0))
