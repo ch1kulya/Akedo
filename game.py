@@ -391,9 +391,10 @@ class Enemy:
         if distance > 0:
             if self.is_shooter:
                 # Стрелки поддерживают расстояние от игрока
+                shooter_speed = random.randint(10, 13) / 10
                 if distance > self.preferred_distance:
-                    move_x = (dx / distance)
-                    move_y = (dy / distance)
+                    move_x = (dx / distance) * shooter_speed
+                    move_y = (dy / distance) * shooter_speed
                 elif distance < self.preferred_distance - 20:
                     move_x = -(dx / distance)
                     move_y = -(dy / distance)
@@ -402,8 +403,9 @@ class Enemy:
                     move_y = 0
             else:
                 # Обычные враги движутся к игроку
-                move_x = (dx / distance)
-                move_y = (dy / distance)
+                enemy_speed = random.randint(10, 15) / 10
+                move_x = (dx / distance) * enemy_speed
+                move_y = (dy / distance) * enemy_speed
         else:
             move_x = 0
             move_y = 0
@@ -565,6 +567,69 @@ class SuicideEnemy(Enemy):
         else:
             # Обычное поведение движения к игроку
             pass  # Движение обрабатывается в основном цикле или методом move_towards_player
+        
+class RusherEnemy(Enemy):
+    def __init__(self, x, y, wave=6):
+        super().__init__(x, y, is_shooter=False, wave=wave)
+        self.symbol = 'R'
+        self.rush_speed = 7  # Скорость рывка
+        self.rush_inertia = 0.97  # Инерция для замедления рывка
+        self.velocity_x = 0  # Начальная скорость по оси X
+        self.velocity_y = 0  # Начальная скорость по оси Y
+        self.rest_time = 2000  # Время отдыха после рывка
+        self.rushing = False
+        self.resting = False
+        self.rush_start_time = None
+        self.rest_start_time = None
+        self.shake_duration = 900  # Тряска перед рывком
+
+    def update(self, player_x, player_y, delta_time):
+        current_time = pygame.time.get_ticks()
+
+        # Если враг отдыхает после рывка
+        if self.resting:
+            if current_time - self.rest_start_time >= self.rest_time:
+                self.resting = False  # Завершение отдыха
+                self.color = ENEMY_DEFAULT_COLOR  # Сброс цвета врага на стандартный после отдыха
+            return
+
+        # Если враг движется к игроку (рывок)
+        if self.rushing:
+            # Движение с инерцией
+            self.velocity_x *= self.rush_inertia
+            self.velocity_y *= self.rush_inertia
+            self.x += self.velocity_x
+            self.y += self.velocity_y
+
+            if current_time - self.rush_start_time >= 500:  # Рывок длится 500 мс
+                self.rushing = False
+                self.resting = True
+                self.rest_start_time = current_time
+                self.color = ENEMY_DEFAULT_COLOR  # Сброс цвета на стандартный после рывка
+            return
+
+        # Если враг готовится к рывку (тряска)
+        if not self.shaking:
+            self.shaking = True
+            self.shake_start_time = current_time
+        else:
+            elapsed_time = current_time - self.shake_start_time
+            if elapsed_time >= self.shake_duration:
+                self.shaking = False
+                self.color = ENEMY_COLOR  # Враг становится красным перед атакой
+                self.rushing = True
+                self.rush_start_time = current_time
+
+                # Направление к игроку
+                dx = player_x - self.x
+                dy = player_y - self.y
+                distance = math.sqrt(dx ** 2 + dy ** 2)
+                if distance > 0:
+                    self.velocity_x = (dx / distance) * self.rush_speed
+                    self.velocity_y = (dy / distance) * self.rush_speed
+            else:
+                self.x += random.randint(-SHAKE_INTENSITY, SHAKE_INTENSITY)
+                self.y += random.randint(-SHAKE_INTENSITY, SHAKE_INTENSITY)
         
 # Класс босса
 class Boss(Enemy):
@@ -730,11 +795,12 @@ def spawn_enemies(count, wave):
         x = random.randint(0, SCREEN_WIDTH)
         y = random.randint(0, SCREEN_HEIGHT)
         enemy_type_chance = random.random()
-        if enemy_type_chance < 0.1:
-            # 10% шанс спауна SuicideEnemy
+        if wave >= 6 and enemy_type_chance < 0.13:
+            enemies.append(RusherEnemy(x, y, wave))
+        elif enemy_type_chance > 0.89:
             enemies.append(SuicideEnemy(x, y, wave))
         else:
-            is_shooter = random.random() < 0.3  # 30% шанс быть стрелком
+            is_shooter = random.random() < 0.31
             enemies.append(Enemy(x, y, is_shooter, wave))
     return enemies
 
@@ -776,6 +842,8 @@ def handle_collisions(player, enemies, damage_numbers, wave, wave_start_time, pr
                 if enemy.is_dead:
                     if isinstance(enemy, Boss):
                         exp_gain = round(10 + 5 * wave, 1)  # Босс дает больше опыта
+                    elif isinstance(enemy, RusherEnemy):
+                        exp_gain = round(1.5 + 0.1 * wave, 1)
                     elif enemy.is_shooter:
                         exp_gain = round(1.2 + 0.1 * wave, 1)
                     else:
@@ -1299,6 +1367,9 @@ def main():
                     else:
                         color = enemy.color
                     draw_text(symbol, boss_font, color, enemy.x, enemy.y)
+                elif isinstance(enemy, RusherEnemy):
+                    enemy.update(player.x, player.y, delta_time)
+                    draw_text(enemy.symbol, font, enemy.color, int(enemy.x), int(enemy.y))
                 else:
                     enemy.update(delta_time)
                     if not enemy.is_dead:
