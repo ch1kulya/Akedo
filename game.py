@@ -551,11 +551,7 @@ class Enemy:
         self.x = x
         self.y = y
         base_hp = 3
-        for upgrade_id in settings['purchased_upgrades']:
-            if upgrade_id == 'glass_cannon':
-                base_damage = 2
-            else:
-                base_damage = 1
+        base_damage = 1
         self.hp = base_hp * (1 + 0.05 * (wave - 1))  # Враги становятся сильнее с каждой волной
         self.damage = base_damage * (1 + 0.05 * (wave - 1))  # Урон врагов увеличивается с волнами
         self.color = ENEMY_DEFAULT_COLOR
