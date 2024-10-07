@@ -1210,6 +1210,7 @@ def main():
     esc_hold_duration = 1000    # Время в миллисекундах для выхода в меню
     esc_pressed_during_pause = False  # Флаг, указывающий, что Esc был нажат во время паузы
     boss_appearance_number = 1  # Счетчик появлений босса
+    pause_initialized = False
 
     while running:
         delta_time = clock.tick(60)
@@ -1234,6 +1235,7 @@ def main():
                         if hold_time < esc_hold_duration:
                             # Короткое нажатие, отжимаем паузу
                             paused = False
+                            pause_initialized = False
                         # Сбрасываем флаги
                         esc_hold_start_time = None
                         esc_pressed_during_pause = False
@@ -1430,14 +1432,26 @@ def main():
 
             pygame.display.flip()
         else:
-            # Отображение состояния паузы
-            pause_text = pygame.font.SysFont('Courier', 48).render("Paused", True, TEXT_COLOR)
-            screen.blit(pause_text, (SCREEN_WIDTH // 2 - pause_text.get_width() // 2, SCREEN_HEIGHT // 2 - 50))
-
-            # Отображение подсказки о выходе в меню
-            hint_font = pygame.font.SysFont('Courier', 28)
-            hint_text = hint_font.render("Hold Esc to return to menu.", True, TEXT_COLOR)
-            screen.blit(hint_text, (SCREEN_WIDTH // 2 - hint_text.get_width() // 2, SCREEN_HEIGHT - 100))
+            if not pause_initialized:
+                pause_overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+                # Отображаем паузу
+                screen.blit(pause_overlay, (0, 0))
+                pause_font = pygame.font.SysFont('Courier', 48)
+                pause_text_surface = pause_font.render("Paused", True, TEXT_COLOR)
+                pause_text_surface.set_alpha(200)  # Прозрачность текста
+                # Отображение текста в центре экрана
+                screen.blit(pause_text_surface, 
+                            (SCREEN_WIDTH // 2 - pause_text_surface.get_width() // 2, SCREEN_HEIGHT // 2 - 50))
+                hint_font = pygame.font.SysFont('Courier', 28)
+                hint_text_surface = hint_font.render("Hold Esc to return to menu.", True, TEXT_COLOR)
+                hint_text_surface.set_alpha(200)
+                screen.blit(hint_text_surface, 
+                            (SCREEN_WIDTH // 2 - hint_text_surface.get_width() // 2, SCREEN_HEIGHT - 100))
+                chromatic_surface = chromatic_aberration(screen.copy())
+                apply_scanlines(chromatic_surface)
+                chromatic_surface.blit(chromatic_surface, (0, 0))
+                screen.blit(chromatic_surface, (0, 0))
+                pause_initialized = True
 
             pygame.display.flip()
 
@@ -1449,9 +1463,7 @@ def main():
                         in_boss_fight = False
                         boss_music.stop()
                         pygame.mixer.music.play(-1, 0.0)
-                    # Выход в главное меню
                     return  # Возвращаемся из функции main(), что приведет к возврату в главное меню
-                pass
 
     pygame.quit()
 
