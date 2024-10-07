@@ -19,7 +19,8 @@ def load_settings():
         'fullscreen': 'False',
         'volume_music': '0.5',
         'volume_hits': '0.5',
-        'volume_other': '0.5'
+        'volume_other': '0.5',
+        'language': 'en'
     }
     
     if os.path.exists(config_file):
@@ -29,7 +30,8 @@ def load_settings():
             'fullscreen': config.getboolean('Settings', 'fullscreen'),
             'volume_music': config.getfloat('Settings', 'volume_music'),
             'volume_hits': config.getfloat('Settings', 'volume_hits'),
-            'volume_other': config.getfloat('Settings', 'volume_other')
+            'volume_other': config.getfloat('Settings', 'volume_other'),
+            'language': config.get('Settings', 'language', fallback=default_settings['language'])
         }
     else:
         # Используем настройки по умолчанию и сохраняем их
@@ -38,7 +40,8 @@ def load_settings():
             'fullscreen': default_settings['fullscreen'] == 'True',
             'volume_music': float(default_settings['volume_music']),
             'volume_hits': float(default_settings['volume_hits']),
-            'volume_other': float(default_settings['volume_other'])
+            'volume_other': float(default_settings['volume_other']),
+            'language': default_settings['language']
         }
         save_settings(settings)
     
@@ -51,12 +54,23 @@ def save_settings(settings):
         'fullscreen': str(settings['fullscreen']),
         'volume_music': str(settings['volume_music']),
         'volume_hits': str(settings['volume_hits']),
-        'volume_other': str(settings['volume_other'])
+        'volume_other': str(settings['volume_other']),
+        'language': settings['language']
     }
     
     config_file = os.path.join(base_path, 'settings.cfg')
     with open(config_file, 'w') as configfile:
         config.write(configfile)
+        
+def get_text(key, **kwargs):
+    lang = settings.get('language', 'en')
+    text = localization.get(lang, {}).get(key, key)  # Возвращаем ключ, если перевод не найден
+    if kwargs:
+        try:
+            text = text.format(**kwargs)
+        except KeyError:
+            pass  # Если форматирование не удалось, возвращаем текст без изменений
+    return text
 
 # Настройки
 settings = load_settings()
@@ -87,6 +101,92 @@ PLAYER_DAMAGE = 1  # Урон, наносимый игроком за удар
 DAMAGE_COOLDOWN = 400  # Кулдаун в миллисекундах для атак
 SHAKE_INTENSITY = 2  # Интенсивность тряски врага перед тем, как он станет красным
 INVULNERABILITY_DURATION = 600  # Продолжительность неуязвимости игрока в начале волны (в мс)
+
+# Локализация
+localization = {
+    'en': {
+        'start_game': 'Start Game',
+        'settings': 'Settings',
+        'how_to_play': 'How to Play',
+        'exit': 'Exit',
+        'upgrade_menu': 'Upgrade Menu',
+        'increase_hp': 'Increase HP',
+        'increase_damage': 'Increase Damage',
+        'increase_defense': 'Increase Defense',
+        'press_to_select': 'Press 1, 2, or 3 to select an upgrade.',
+        'next_wave_in': 'Next wave in',
+        'game_over': 'Game Over',
+        'paused': 'Paused',
+        'hold_to_menu': 'Hold Esc to return to menu.',
+        'resolution': 'Resolution',
+        'fullscreen_mode': 'Fullscreen Mode',
+        'music_volume': 'Music Volume',
+        'hit_volume': 'Hit Volume',
+        'other_sounds_volume': 'Other Sounds Volume',
+        'back': 'Back',
+        'how_to_play_title': 'How to Play',
+        'how_to_play_instructions': [
+            "To begin with, the character '@' will follow your cursor.",
+            "All you have to do is touch enemies to deal damage and kill.",
+            "However, you should be careful as they may respond.",
+            "Collect health pickups '+' to restore HP.",
+            "Enemies become stronger with each wave.",
+            "To keep up you need to upgrade wisely.",
+            "Good luck!",
+            "",
+            "Press ESC to return to the main menu."
+        ],
+        'level': 'Level',
+        'hp': 'HP',
+        'defense': 'DEF',
+        'exp': 'EXP',
+        'boss': 'Boss',
+        'on': 'ON',
+        'off': 'OFF',
+        'language': 'Language'
+    },
+    'ru': {
+        'start_game': 'Начать игру',
+        'settings': 'Настройки',
+        'how_to_play': 'Как играть',
+        'exit': 'Выход',
+        'upgrade_menu': 'Меню улучшений',
+        'increase_hp': 'Увеличить HP',
+        'increase_damage': 'Увеличить урон',
+        'increase_defense': 'Увеличить защиту',
+        'press_to_select': 'Нажмите 1, 2 или 3 для выбора улучшения.',
+        'next_wave_in': 'Следующая волна через',
+        'game_over': 'Игра окончена',
+        'paused': 'Пауза',
+        'hold_to_menu': 'Удерживайте Esc для возврата в меню.',
+        'resolution': 'Разрешение',
+        'fullscreen_mode': 'Полноэкранный режим',
+        'music_volume': 'Громкость музыки',
+        'hit_volume': 'Громкость ударов',
+        'other_sounds_volume': 'Громкость остальных звуков',
+        'back': 'Назад',
+        'how_to_play_title': 'Как играть',
+        'how_to_play_instructions': [
+            "Персонаж '@' всегда будет следовать за курсором.",
+            "Всё, что нужно делать, — касаться врагов, чтобы нанести им урон и убить.",
+            "Однако стоит быть осторожным, так как они могут ответить.",
+            "Собирай аптечки '+' для восстановления HP.",
+            "Враги становятся сильнее с каждой волной.",
+            "Чтобы справиться, необходимо разумно улучшаться.",
+            "Удачи!",
+            "",
+            "Нажмите ESC для возврата в главное меню."
+        ],
+        'level': 'Уровень',
+        'hp': 'ОЗ',
+        'defense': 'ЗАЩ',
+        'exp': 'ОПЫТ',
+        'boss': 'Босс',
+        'on': 'ВКЛ',
+        'off': 'ВЫКЛ',
+        'language': 'Язык'
+    }
+}
 
 # Инициализация Pygame и микшера для звука
 pygame.init()
@@ -848,7 +948,7 @@ def handle_collisions(player, enemies, damage_numbers, wave, wave_start_time, pr
                     else:
                         exp_gain = round(0.9 + 0.1 * wave, 1)
                     player.gain_exp(exp_gain)
-                    damage_numbers.append(DamageNumber(player.x, player.y, f"+{exp_gain} EXP", (0, 0, 255)))
+                    damage_numbers.append(DamageNumber(player.x, player.y, f"+{exp_gain} {get_text('exp')}", (0, 0, 255)))
 
                     # 15% шанс появления аптечки
                     health_pickup = spawn_health_pickup(enemy.x, enemy.y)
@@ -874,15 +974,19 @@ def upgrade_menu(player):
     while selected is None:
         screen.fill(BACKGROUND_COLOR)
         # Отображение заголовка меню улучшений
-        title_text = upgrade_font.render("Upgrade Menu", True, TEXT_COLOR)
+        title_text = upgrade_font.render(get_text('upgrade_menu'), True, TEXT_COLOR)
         screen.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, SCREEN_HEIGHT // 2 - 150))
         # Опции улучшений
-        options = ['1. Increase HP', '2. Increase Damage', '3. Increase Defense']
+        options = [
+            f"1. {get_text('increase_hp')}",
+            f"2. {get_text('increase_damage')}",
+            f"3. {get_text('increase_defense')}"
+        ]
         for i, option in enumerate(options):
             option_text = font.render(option, True, TEXT_COLOR)
             screen.blit(option_text, (SCREEN_WIDTH // 2 - option_text.get_width() // 2, SCREEN_HEIGHT // 2 - 50 + i * 40))
-        # Добавление подсказки внизу
-        hint_text = hint_font.render("Press 1, 2, or 3 to select an upgrade.", True, TEXT_COLOR)
+        # Подсказка
+        hint_text = hint_font.render(get_text('press_to_select'), True, TEXT_COLOR)
         screen.blit(hint_text, (SCREEN_WIDTH // 2 - hint_text.get_width() // 2, SCREEN_HEIGHT - 100))
         
         # Применение VHS эффектов
@@ -939,7 +1043,7 @@ def wave_countdown():
             last_second = seconds_left
             pygame.mixer.Sound.play(countdown_sound)
         screen.fill(BACKGROUND_COLOR)
-        countdown_text = font.render(f'Next wave in {seconds_left}...', True, TEXT_COLOR)
+        countdown_text = font.render(f'{get_text('next_wave_in')} {seconds_left}...', True, TEXT_COLOR)
         screen.blit(countdown_text, (SCREEN_WIDTH // 2 - countdown_text.get_width() // 2, SCREEN_HEIGHT // 2))
         # Применение VHS эффектов
         chromatic_surface = chromatic_aberration(screen.copy())
@@ -963,7 +1067,8 @@ def save_settings(settings):
         'fullscreen': str(settings['fullscreen']),
         'volume_music': str(settings['volume_music']),
         'volume_hits': str(settings['volume_hits']),
-        'volume_other': str(settings['volume_other'])
+        'volume_other': str(settings['volume_other']),
+        'language': settings['language']
     }
     
     config_file = os.path.join(base_path, 'settings.cfg')
@@ -976,7 +1081,12 @@ def main_menu():
 
     menu_font = pygame.font.SysFont('Courier', 56)
 
-    options = ['Start Game', 'Settings', 'How to Play', 'Exit']
+    options = [
+        get_text('start_game'),
+        get_text('settings'),
+        get_text('how_to_play'),
+        get_text('exit')
+    ]
 
     while menu_running:
         for event in pygame.event.get():
@@ -1009,6 +1119,14 @@ def main_menu():
         # Отображение названия игры
         title_text = menu_font.render('Ākēdo', True, TEXT_COLOR)
         screen.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, 150))
+        
+        # Обновляем опции с учетом текущего языка
+        options = [
+            get_text('start_game'),
+            get_text('settings'),
+            get_text('how_to_play'),
+            get_text('exit')
+        ]
 
         # Отображение опций меню
         for i, option in enumerate(options):
@@ -1035,17 +1153,9 @@ def how_to_play_menu():
     back_option = 'Press ESC to return to the main menu.'
     
     instructions = [
-        "How to Play",
+        get_text('how_to_play_title'),
         "",
-        "To begin with, the character '@' will follow your cursor.",
-        "All you have to do is touch enemies to deal damage and kill.",
-        "However, you should be careful as they may respond.",
-        "Collect health pickups '+' to restore HP.",
-        "Enemies become stronger with each wave.",
-        "To keep up you need to upgrade wisely.",
-        "Good luck!",
-        "",
-        back_option
+        *localization[settings['language']]['how_to_play_instructions']
     ]
 
     while how_to_play_running:
@@ -1089,7 +1199,15 @@ def how_to_play_menu():
 def settings_menu():
     settings_running = True
     selected_option = 0
-    options = ['Resolution', 'Fullscreen Mode', 'Music Volume', 'Hit Volume', 'Other Sounds Volume', 'Back']
+    options = [
+        get_text('resolution'),
+        get_text('fullscreen_mode'),
+        get_text('music_volume'),
+        get_text('hit_volume'),
+        get_text('other_sounds_volume'),
+        get_text('language'),
+        get_text('back')
+    ]
 
     while settings_running:
         for event in pygame.event.get():
@@ -1102,43 +1220,58 @@ def settings_menu():
                 elif event.key == pygame.K_DOWN:
                     selected_option = (selected_option + 1) % len(options)
                 elif event.key == pygame.K_RETURN:
-                    if options[selected_option] == 'Resolution':
+                    current_option = options[selected_option]
+                    if current_option == get_text('resolution'):
                         change_resolution()
-                    elif options[selected_option] == 'Fullscreen Mode':
+                    elif current_option == get_text('fullscreen_mode'):
                         settings['fullscreen'] = not settings['fullscreen']
                         apply_display_settings()
-                    elif options[selected_option] == 'Music Volume':
+                    elif current_option == get_text('music_volume'):
                         adjust_volume('volume_music')
-                    elif options[selected_option] == 'Hit Volume':
+                    elif current_option == get_text('hit_volume'):
                         adjust_volume('volume_hits')
-                    elif options[selected_option] == 'Other Sounds Volume':
+                    elif current_option == get_text('other_sounds_volume'):
                         adjust_volume('volume_other')
-                    elif options[selected_option] == 'Back':
+                    elif current_option == get_text('language'):
+                        change_language()
+                    elif current_option == get_text('back'):
                         settings_running = False
-
+                        
+        options = [
+            get_text('resolution'),
+            get_text('fullscreen_mode'),
+            get_text('music_volume'),
+            get_text('hit_volume'),
+            get_text('other_sounds_volume'),
+            get_text('language'),
+            get_text('back')
+        ]
+                        
         # Очистка экрана
         screen.fill(BACKGROUND_COLOR)
 
         # Отображение заголовка меню настроек
-        settings_title = pygame.font.SysFont('Courier', 48).render('Settings', True, TEXT_COLOR)
+        settings_title = pygame.font.SysFont('Courier', 48).render(get_text('settings'), True, TEXT_COLOR)
         screen.blit(settings_title, (SCREEN_WIDTH // 2 - settings_title.get_width() // 2, 150))
 
         # Отображение опций настроек с текущими значениями
         for i, option in enumerate(options):
-            if option == 'Fullscreen Mode':
-                status = 'ON' if settings['fullscreen'] else 'OFF'
+            if option == get_text('fullscreen_mode'):
+                status = get_text('on') if settings['fullscreen'] else get_text('off')
                 option_display = f"{option}: {status}"
-            elif option == 'Resolution':
+            elif option == get_text('resolution'):
                 option_display = f"{option}: {settings['resolution'][0]}x{settings['resolution'][1]}"
-            elif option == 'Music Volume':
-                volume_value = int(settings['volume_music'] * 100)
+            elif option in [get_text('music_volume'), get_text('hit_volume'), get_text('other_sounds_volume')]:
+                volume_key_map = {
+                    get_text('music_volume'): 'volume_music',
+                    get_text('hit_volume'): 'volume_hits',
+                    get_text('other_sounds_volume'): 'volume_other'
+                }
+                volume_value = int(settings[volume_key_map[option]] * 100)
                 option_display = f"{option}: {volume_value}%"
-            elif option == 'Hit Volume':
-                volume_value = int(settings['volume_hits'] * 100)
-                option_display = f"{option}: {volume_value}%"
-            elif option == 'Other Sounds Volume':
-                volume_value = int(settings['volume_other'] * 100)
-                option_display = f"{option}: {volume_value}%"
+            elif option == get_text('language'):
+                lang_display = 'English' if settings['language'] == 'en' else 'Русский'
+                option_display = f"{option}: {lang_display}"
             else:
                 option_display = option
 
@@ -1248,7 +1381,14 @@ def adjust_volume(volume_key):
 
         # Отображение текущего уровня громкости
         volume_value = int(settings[volume_key] * 100)
-        volume_text = font.render(f"{volume_key.replace('_', ' ').title()}: {volume_value}%", True, TEXT_COLOR)
+        # Определение ключа для локализации
+        volume_key_map = {
+            'volume_music': 'music_volume',
+            'volume_hits': 'hit_volume',
+            'volume_other': 'other_sounds_volume'
+        }
+
+        volume_text = font.render(f"{get_text(volume_key_map.get(volume_key, volume_key))}: {volume_value}%", True, TEXT_COLOR)
         screen.blit(volume_text, (SCREEN_WIDTH // 2 - volume_text.get_width() // 2, SCREEN_HEIGHT // 2))
 
         # Применение VHS эффектов
@@ -1259,6 +1399,54 @@ def adjust_volume(volume_key):
         chromatic_surface.blit(chromatic_surface, (0, 0))
         screen.blit(chromatic_surface, (0, 0))
 
+        pygame.display.flip()
+        clock.tick(60)
+        
+def change_language():
+    languages = ['en', 'ru']
+    lang_names = {
+        'en': 'English',
+        'ru': 'Русский'
+    }
+    current_lang_index = languages.index(settings['language']) if settings['language'] in languages else 0
+    
+    changing_language = True
+    
+    while changing_language:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LEFT:
+                    current_lang_index = (current_lang_index - 1) % len(languages)
+                elif event.key == pygame.K_RIGHT:
+                    current_lang_index = (current_lang_index + 1) % len(languages)
+                elif event.key == pygame.K_RETURN:
+                    settings['language'] = languages[current_lang_index]
+                    save_settings(settings)
+                    changing_language = False
+                elif event.key == pygame.K_ESCAPE:
+                    changing_language = False
+        
+        # Очистка экрана
+        screen.fill(BACKGROUND_COLOR)
+        
+        # Отображение текущего выбора языка
+        language_text = get_text('language')
+        selected_lang = lang_names[languages[current_lang_index]]
+        display_text = f"{language_text}: {selected_lang}"
+        lang_display = font.render(display_text, True, TEXT_COLOR)
+        screen.blit(lang_display, (SCREEN_WIDTH // 2 - lang_display.get_width() // 2, SCREEN_HEIGHT // 2))
+        
+        # Применение VHS эффектов
+        chromatic_surface = chromatic_aberration(screen.copy())
+        apply_scanlines(chromatic_surface)
+        
+        # Наложение VHS эффекта на экран
+        chromatic_surface.blit(chromatic_surface, (0, 0))
+        screen.blit(chromatic_surface, (0, 0))
+        
         pygame.display.flip()
         clock.tick(60)
 
@@ -1339,7 +1527,7 @@ def main():
                     wave += 1
                 else:
                     pygame.mixer.Sound.play(game_over_sound)
-                    game_over_text = pygame.font.SysFont('Courier', 48).render("Game Over", True, TEXT_COLOR)
+                    game_over_text = pygame.font.SysFont('Courier', 48).render(get_text('game_over'), True, TEXT_COLOR)
                     screen.blit(game_over_text, (SCREEN_WIDTH // 2 - game_over_text.get_width() // 2, SCREEN_HEIGHT // 2 - 50))
                     
                     # Применение VHS эффектов
@@ -1405,7 +1593,7 @@ def main():
                     pygame.draw.rect(screen, (162, 68, 43), (bar_x + 1, bar_y + 1, filled_width, bar_height - 2))
 
                     # Отображаем текст "Boss" над полоской HP
-                    boss_text = font.render("Boss", True, (255, 255, 255))
+                    boss_text = font.render(get_text('boss'), True, (255, 255, 255))
                     text_rect = boss_text.get_rect(center=(SCREEN_WIDTH / 2, bar_y - 10))
                     screen.blit(boss_text, text_rect)
                     break  # Босс только один
@@ -1438,7 +1626,7 @@ def main():
             game_over = handle_collisions(player, enemies, damage_numbers, wave, wave_start_time, projectiles, health_pickups)
             if game_over:
                 pygame.mixer.Sound.play(game_over_sound)
-                game_over_text = pygame.font.SysFont('Courier', 48).render("Game Over", True, TEXT_COLOR)
+                game_over_text = pygame.font.SysFont('Courier', 48).render(get_text('game_over'), True, TEXT_COLOR)
                 screen.blit(game_over_text, (SCREEN_WIDTH // 2 - game_over_text.get_width() // 2, SCREEN_HEIGHT // 2 - 50))
                 
                 # Применение VHS эффектов
@@ -1475,10 +1663,10 @@ def main():
                     player.heal(healed_amount)
                     health_pickups.remove(health_pickup)
                     pygame.mixer.Sound.play(health_pickup_sound)
-                    damage_numbers.append(DamageNumber(player.x, player.y, f"+{healed_amount} HP", (0, 255, 0)))
+                    damage_numbers.append(DamageNumber(player.x, player.y, f"+{healed_amount} {get_text('hp')}", (0, 255, 0)))
 
             # Отображение статистики игрока (уровень, здоровье и опыт)
-            stats_text = f'Level: {player.level}  HP: {player.hp:.1f}/{player.max_hp:.1f}  DEF: {player.defense_upgrade_count * 0.2:.1f}  EXP: {player.exp:.1f}/{player.exp_to_level_up}'
+            stats_text = f"{get_text('level')}: {player.level}  {get_text('hp')}: {player.hp:.1f}/{player.max_hp:.1f}  {get_text('defense')}: {player.defense_upgrade_count * 0.2:.1f}  {get_text('exp')}: {player.exp:.1f}/{player.exp_to_level_up}"
             draw_text(stats_text, font, TEXT_COLOR, 10, 10)
 
             # Удаление мертвых врагов
@@ -1507,13 +1695,13 @@ def main():
                 # Отображаем паузу
                 screen.blit(pause_overlay, (0, 0))
                 pause_font = pygame.font.SysFont('Courier', 48)
-                pause_text_surface = pause_font.render("Paused", True, TEXT_COLOR)
+                pause_text_surface = pause_font.render(get_text('paused'), True, TEXT_COLOR)
                 pause_text_surface.set_alpha(200)  # Прозрачность текста
                 # Отображение текста в центре экрана
                 screen.blit(pause_text_surface, 
                             (SCREEN_WIDTH // 2 - pause_text_surface.get_width() // 2, SCREEN_HEIGHT // 2 - 50))
                 hint_font = pygame.font.SysFont('Courier', 28)
-                hint_text_surface = hint_font.render("Hold Esc to return to menu.", True, TEXT_COLOR)
+                hint_text_surface = hint_font.render(get_text('hold_to_menu'), True, TEXT_COLOR)
                 hint_text_surface.set_alpha(200)
                 screen.blit(hint_text_surface, 
                             (SCREEN_WIDTH // 2 - hint_text_surface.get_width() // 2, SCREEN_HEIGHT - 100))
