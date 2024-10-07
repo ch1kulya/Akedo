@@ -576,7 +576,6 @@ class RusherEnemy(Enemy):
         self.rush_inertia = 0.97  # Инерция для замедления рывка
         self.velocity_x = 0  # Начальная скорость по оси X
         self.velocity_y = 0  # Начальная скорость по оси Y
-        self.rest_time = 2000  # Время отдыха после рывка
         self.rushing = False
         self.resting = False
         self.rush_start_time = None
@@ -588,7 +587,7 @@ class RusherEnemy(Enemy):
 
         # Если враг отдыхает после рывка
         if self.resting:
-            if current_time - self.rest_start_time >= self.rest_time:
+            if current_time - self.rest_start_time >= random.randint(1000, 2500):
                 self.resting = False  # Завершение отдыха
                 self.color = ENEMY_DEFAULT_COLOR  # Сброс цвета врага на стандартный после отдыха
             return
