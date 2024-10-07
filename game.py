@@ -20,7 +20,9 @@ def load_settings():
         'volume_music': '0.5',
         'volume_hits': '0.5',
         'volume_other': '0.5',
-        'language': 'en'
+        'language': 'en',
+        'currency': '0',
+        'purchased_upgrades': ''
     }
     
     if os.path.exists(config_file):
@@ -31,7 +33,9 @@ def load_settings():
             'volume_music': config.getfloat('Settings', 'volume_music'),
             'volume_hits': config.getfloat('Settings', 'volume_hits'),
             'volume_other': config.getfloat('Settings', 'volume_other'),
-            'language': config.get('Settings', 'language', fallback=default_settings['language'])
+            'language': config.get('Settings', 'language', fallback=default_settings['language']),
+            'currency': config.getfloat('Settings', 'currency', fallback=0.0),
+            'purchased_upgrades': config.get('Settings', 'purchased_upgrades', fallback='').split(',') if config.get('Settings', 'purchased_upgrades', fallback='') else []
         }
     else:
         # Используем настройки по умолчанию и сохраняем их
@@ -41,7 +45,9 @@ def load_settings():
             'volume_music': float(default_settings['volume_music']),
             'volume_hits': float(default_settings['volume_hits']),
             'volume_other': float(default_settings['volume_other']),
-            'language': default_settings['language']
+            'language': default_settings['language'],
+            'currency': 0.0,
+            'purchased_upgrades': []
         }
         save_settings(settings)
     
@@ -55,9 +61,10 @@ def save_settings(settings):
         'volume_music': str(settings['volume_music']),
         'volume_hits': str(settings['volume_hits']),
         'volume_other': str(settings['volume_other']),
-        'language': settings['language']
+        'language': settings['language'],
+        'currency': str(settings.get('currency', 0.0)),
+        'purchased_upgrades': ','.join(settings.get('purchased_upgrades', []))
     }
-    
     config_file = os.path.join(base_path, 'settings.cfg')
     with open(config_file, 'w') as configfile:
         config.write(configfile)
@@ -136,6 +143,25 @@ localization = {
             "",
             "Press ESC to return to the main menu."
         ],
+        'esc_to_menu': 'Press ESC to return to the main menu.',
+        'shop': 'Shop',
+        'currency_display': 'Currency: ${:.2f}',
+        'buy': 'Buy',
+        'sell': 'Sell',
+        'glass_cannon_name': 'Glass Cannon',
+        'glass_cannon_description': 'All player HP is divided by 2, and damage is multiplied by 2 throughout the run.',
+        'curse_of_invisibility_name': 'Curse of Invisibility',
+        'curse_of_invisibility_description': 'Shooter projectiles stop homing on the player but deal 5x damage.',
+        'destiny_name': 'Destiny',
+        'destiny_description': 'Increased chance of health pickups by 5x, but experience earned is halved.',
+        'divinity_name': 'Divinity',
+        'divinity_description': 'Player can choose which wave to start from.',
+        'shop_title': 'Shop',
+        'upgrade_available': 'Available',
+        'upgrade_purchased': 'Purchased',
+        'wave_selection_title': 'Select Starting Wave',
+        'wave_selection_instruction': 'Use LEFT/RIGHT to change, ENTER to confirm.',
+        'no_description': 'No description available.',
         'level': 'Level',
         'hp': 'HP',
         'defense': 'DEF',
@@ -143,7 +169,8 @@ localization = {
         'boss': 'Boss',
         'on': 'ON',
         'off': 'OFF',
-        'language': 'Language'
+        'language': 'Language',
+        'wave': 'Wave'
     },
     'ru': {
         'start_game': 'Начать игру',
@@ -177,6 +204,25 @@ localization = {
             "",
             "Нажмите ESC для возврата в главное меню."
         ],
+        'esc_to_menu': 'Нажмите ESC для возврата в главное меню.',
+        'shop': 'Магазин',
+        'currency_display': 'Деньги: ${:.2f}',
+        'buy': 'Купить',
+        'sell': 'Продать',
+        'glass_cannon_name': 'Стеклянная пушка',
+        'glass_cannon_description': 'Все HP игрока делятся на 2, а урон умножается на 2 на протяжении всего забега.',
+        'curse_of_invisibility_name': 'Проклятие невидимости',
+        'curse_of_invisibility_description': 'Снаряды стрелков перестают наводиться на игрока, но наносят в 5 раз больше урона.',
+        'destiny_name': 'Судьбоносность',
+        'destiny_description': 'Повышен шанс выпадания аптечек в 5 раз, однако опыта игрок получает в 2 раза меньше.',
+        'divinity_name': 'Божественность',
+        'divinity_description': 'Игрок получает возможность выбрать, с какой волны начать.',
+        'shop_title': 'Магазин',
+        'upgrade_available': 'Доступно',
+        'upgrade_purchased': 'Куплено',
+        'wave_selection_title': 'Выберите стартовую волну',
+        'wave_selection_instruction': 'Используйте ВЛЕВО/ВПРАВО для изменения, ENTER для подтверждения.',
+        'no_description': 'Описание недоступно.',
         'level': 'Уровень',
         'hp': 'ОЗ',
         'defense': 'ЗАЩ',
@@ -184,9 +230,37 @@ localization = {
         'boss': 'Босс',
         'on': 'ВКЛ',
         'off': 'ВЫКЛ',
-        'language': 'Язык'
+        'language': 'Язык',
+        'wave': 'Волна'
     }
 }
+
+shop_upgrades = [
+    {
+        'id': 'glass_cannon',
+        'name_key': 'glass_cannon_name',
+        'description_key': 'glass_cannon_description',
+        'price': 100
+    },
+    {
+        'id': 'curse_of_invisibility',
+        'name_key': 'curse_of_invisibility_name',
+        'description_key': 'curse_of_invisibility_description',
+        'price': 150
+    },
+    {
+        'id': 'destiny',
+        'name_key': 'destiny_name',
+        'description_key': 'destiny_description',
+        'price': 150
+    },
+    {
+        'id': 'divinity',
+        'name_key': 'divinity_name',
+        'description_key': 'divinity_description',
+        'price': 250
+    }
+]
 
 # Инициализация Pygame и микшера для звука
 pygame.init()
@@ -230,7 +304,7 @@ def apply_volume_settings():
 
     # Настройка громкости остальных звуков
     other_sounds = [
-        damage_sound, level_up_sound, exp_gain_sound, health_pickup_sound, upgrade_select_sound,
+        damage_sound, error_sound, level_up_sound, exp_gain_sound, health_pickup_sound, upgrade_select_sound,
         shooter_fire_sound, countdown_sound, game_over_sound
     ]
     for sound in other_sounds:
@@ -294,6 +368,7 @@ hit_sounds = [
     pygame.mixer.Sound(os.path.join(base_path, 'audio', 'hit3.wav'))
 ]
 damage_sound = pygame.mixer.Sound(os.path.join(base_path, 'audio', 'damage.wav'))
+error_sound = pygame.mixer.Sound(os.path.join(base_path, 'audio', 'error.wav'))
 level_up_sound = pygame.mixer.Sound(os.path.join(base_path, 'audio', 'level_up.wav'))
 exp_gain_sound = pygame.mixer.Sound(os.path.join(base_path, 'audio', 'exp_gain.wav'))
 health_pickup_sound = pygame.mixer.Sound(os.path.join(base_path, 'audio', 'health_pickup.wav'))
@@ -348,6 +423,13 @@ class Player:
         self.hp_upgrade_count = 0  # Количество улучшений HP
         self.defense_upgrade_count = 0  # Количество улучшений защиты
         self.health_pickup_heal_amount = 1  # Начальное количество восстанавливаемого HP аптечкой
+        
+        # Применение купленных улучшений
+        for upgrade_id in settings['purchased_upgrades']:
+            if upgrade_id == 'glass_cannon':
+                self.max_hp /= 2
+                self.hp = self.max_hp
+                self.damage *= 2
 
     def move(self, target_x, target_y):
         direction_x = target_x - self.x
@@ -469,7 +551,11 @@ class Enemy:
         self.x = x
         self.y = y
         base_hp = 3
-        base_damage = 1
+        for upgrade_id in settings['purchased_upgrades']:
+            if upgrade_id == 'glass_cannon':
+                base_damage = 2
+            else:
+                base_damage = 1
         self.hp = base_hp * (1 + 0.05 * (wave - 1))  # Враги становятся сильнее с каждой волной
         self.damage = base_damage * (1 + 0.05 * (wave - 1))  # Урон врагов увеличивается с волнами
         self.color = ENEMY_DEFAULT_COLOR
@@ -578,6 +664,13 @@ class Enemy:
         if not self.is_shooter:
             return None  # Только стрелки стреляют
 
+        if 'curse_of_invisibility' in settings['purchased_upgrades']:
+            follow_player = False
+            damage_multiplier = 5
+        else:
+            follow_player = True
+            damage_multiplier = 1
+
         current_time = pygame.time.get_ticks()
 
         # Проверяем, прошло ли достаточно времени с последнего выстрела
@@ -599,7 +692,7 @@ class Enemy:
                     if distance > 0:
                         if not shooter_fire_channel.get_busy():
                             shooter_fire_channel.play(shooter_fire_sound)
-                        return Projectile(self.x, self.y, dx / distance, dy / distance, self.damage, follow_player=True)
+                        return Projectile(self.x, self.y, dx / distance, dy / distance, self.damage * damage_multiplier, follow_player=follow_player)
 
         return None
 
@@ -883,7 +976,12 @@ class DamageNumber:
         surface.blit(text_surface, rect)
 
 def spawn_health_pickup(enemy_x, enemy_y):
-    if random.random() < 0.15:  # 15% шанс появления аптечки
+    base_chance = 0.15  # 15% базовый шанс
+    if 'destiny' in settings['purchased_upgrades']:
+        chance = base_chance * 5  # Увеличиваем шанс в 5 раз
+    else:
+        chance = base_chance
+    if random.random() < chance:
         return HealthPickup(enemy_x, enemy_y)
     return None
 
@@ -916,7 +1014,6 @@ def handle_collisions(player, enemies, damage_numbers, wave, wave_start_time, pr
 
     game_over = False
 
-
     for enemy in enemies:
         # Проверка столкновения между игроком и врагом
         if math.sqrt((player.x - enemy.x) ** 2 + (player.y - enemy.y) ** 2) < FONT_SIZE:
@@ -947,10 +1044,13 @@ def handle_collisions(player, enemies, damage_numbers, wave, wave_start_time, pr
                         exp_gain = round(1.2 + 0.1 * wave, 1)
                     else:
                         exp_gain = round(0.9 + 0.1 * wave, 1)
+                    
+                    if 'destiny' in settings['purchased_upgrades']:
+                        exp_gain /= 2  # Опыт в 2 раза меньше
+                    
                     player.gain_exp(exp_gain)
                     damage_numbers.append(DamageNumber(player.x, player.y, f"+{exp_gain} {get_text('exp')}", (0, 0, 255)))
 
-                    # 15% шанс появления аптечки
                     health_pickup = spawn_health_pickup(enemy.x, enemy.y)
                     if health_pickup:
                         health_pickups.append(health_pickup)
@@ -1005,20 +1105,31 @@ def upgrade_menu(player):
                 sys.exit()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_1:
-                    # Увеличиваем максимальное HP на 10%
-                    player.max_hp *= 1.10
-                    player.max_hp = round(player.max_hp, 1)  # Округляем до одного знака после запятой
-                    player.hp = player.max_hp  # Восстанавливаем HP до максимума
-                    player.hp_upgrade_count += 1  # Увеличиваем счетчик улучшений HP
+                    for upgrade_id in settings['purchased_upgrades']:
+                        if upgrade_id == 'glass_cannon':
+                            player.max_hp *= 1.07
+                            player.max_hp = round(player.max_hp, 1)
+                            player.hp = player.max_hp
+                            player.hp_upgrade_count += 1
+                        else:
+                            # Увеличиваем максимальное HP на 10%
+                            player.max_hp *= 1.10
+                            player.max_hp = round(player.max_hp, 1)  # Округляем до одного знака после запятой
+                            player.hp = player.max_hp  # Восстанавливаем HP до максимума
+                            player.hp_upgrade_count += 1  # Увеличиваем счетчик улучшений HP
 
-                    # Увеличиваем количество восстанавливаемого HP аптечкой на 20%
-                    player.health_pickup_heal_amount *= 1.20
-                    player.health_pickup_heal_amount = round(player.health_pickup_heal_amount, 1)  # Округляем
+                            # Увеличиваем количество восстанавливаемого HP аптечкой на 20%
+                            player.health_pickup_heal_amount *= 1.20
+                            player.health_pickup_heal_amount = round(player.health_pickup_heal_amount, 1)  # Округляем
 
                     selected = "hp"
                     pygame.mixer.Sound.play(upgrade_select_sound)
                 elif event.key == pygame.K_2:
-                    player.damage += 1
+                    for upgrade_id in settings['purchased_upgrades']:
+                        if upgrade_id == 'glass_cannon':
+                            player.damage += 2
+                        else:
+                            player.damage += 1
                     selected = "damage"
                     pygame.mixer.Sound.play(upgrade_select_sound)
                 elif event.key == pygame.K_3:
@@ -1060,29 +1171,15 @@ def wave_countdown():
                 sys.exit()
         clock.tick(60)       
 
-def save_settings(settings):
-    config = configparser.ConfigParser()
-    config['Settings'] = {
-        'resolution': f"{settings['resolution'][0]}x{settings['resolution'][1]}",
-        'fullscreen': str(settings['fullscreen']),
-        'volume_music': str(settings['volume_music']),
-        'volume_hits': str(settings['volume_hits']),
-        'volume_other': str(settings['volume_other']),
-        'language': settings['language']
-    }
-    
-    config_file = os.path.join(base_path, 'settings.cfg')
-    with open(config_file, 'w') as configfile:
-        config.write(configfile)
-
 def main_menu():
     menu_running = True
-    selected_option = 0  # 0: Начать игру, 1: Настройки, 2: How to play, 3: Выход
+    selected_option = 0  # 0: Начать игру, 1: Магазин, 2: Настройки, 3: Как играть, 4: Выход
 
     menu_font = pygame.font.SysFont('Courier', 56)
 
     options = [
         get_text('start_game'),
+        get_text('shop'),
         get_text('settings'),
         get_text('how_to_play'),
         get_text('exit')
@@ -1103,12 +1200,15 @@ def main_menu():
                         # Start Game
                         menu_running = False
                     elif selected_option == 1:
+                        # Shop
+                        shop_menu()
+                    elif selected_option == 2:
                         # Settings
                         settings_menu()
-                    elif selected_option == 2:
+                    elif selected_option == 3:
                         # How to Play
                         how_to_play_menu()
-                    elif selected_option == 3:
+                    elif selected_option == 4:
                         # Exit
                         pygame.quit()
                         sys.exit()
@@ -1123,6 +1223,7 @@ def main_menu():
         # Обновляем опции с учетом текущего языка
         options = [
             get_text('start_game'),
+            get_text('shop'),
             get_text('settings'),
             get_text('how_to_play'),
             get_text('exit')
@@ -1193,6 +1294,127 @@ def how_to_play_menu():
         chromatic_surface.blit(chromatic_surface, (0, 0))
         screen.blit(chromatic_surface, (0, 0))
 
+        pygame.display.flip()
+        clock.tick(60)
+        
+def shop_menu():
+    shop_running = True
+    selected_option = 0  # Индекс выбранного улучшения
+    
+    shop_font = pygame.font.SysFont('Courier', 24)
+    title_font = pygame.font.SysFont('Courier', 48)
+    button_font = pygame.font.SysFont('Courier', 28)
+    desc_font = pygame.font.SysFont('Courier', 22)
+    
+    card_width = SCREEN_WIDTH - 100
+    card_height = 100
+    card_margin = 20
+    max_description_width = card_width - 180  # Оставляем место для названия и кнопки
+    
+    while shop_running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_UP:
+                    selected_option = (selected_option - 1) % len(shop_upgrades)
+                elif event.key == pygame.K_DOWN:
+                    selected_option = (selected_option + 1) % len(shop_upgrades)
+                elif event.key == pygame.K_RETURN:
+                    upgrade = shop_upgrades[selected_option]
+                    if upgrade['id'] in settings['purchased_upgrades']:
+                        # Продажа улучшения
+                        sell_price = upgrade['price'] / 2
+                        settings['currency'] += sell_price
+                        settings['purchased_upgrades'].remove(upgrade['id'])
+                        pygame.mixer.Sound.play(upgrade_select_sound)
+                        save_settings(settings)
+                    else:
+                        # Покупка улучшения
+                        if settings['currency'] >= upgrade['price']:
+                            settings['currency'] -= upgrade['price']
+                            settings['purchased_upgrades'].append(upgrade['id'])
+                            pygame.mixer.Sound.play(upgrade_select_sound)
+                            save_settings(settings)
+                        else:
+                            error_sound.play()
+                    save_settings(settings)
+        
+        # Очистка экрана
+        screen.fill(BACKGROUND_COLOR)
+        
+        # Заголовок магазина
+        title_text = title_font.render(get_text('shop_title'), True, TEXT_COLOR)
+        screen.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, 30))
+        
+        # Отображение текущей валюты
+        currency_text = get_text('currency_display').format(settings['currency'])
+        currency_surface = shop_font.render(currency_text, True, TEXT_COLOR)
+        screen.blit(currency_surface, (SCREEN_WIDTH - currency_surface.get_width() - 50, 30))
+        
+        # Отображение списка улучшений в виде карточек
+        for idx, upgrade in enumerate(shop_upgrades):
+            y = 100 + idx * (card_height + card_margin)
+            is_selected = idx == selected_option
+            border_color = (255, 255, 255)  # Белый цвет границы
+            accent_color = (255, 215, 0)    # Золотой цвет для акцента выбранной карточки
+            
+            if is_selected:
+                # Рисуем границу с акцентом
+                pygame.draw.rect(screen, accent_color, (50, y, card_width, card_height), 2)
+            else:
+                # Рисуем обычную белую границу
+                pygame.draw.rect(screen, border_color, (50, y, card_width, card_height), 1)
+            
+            # Название улучшения
+            name = get_text(upgrade['name_key'])
+            name_surface = shop_font.render(name, True, TEXT_COLOR)
+            screen.blit(name_surface, (60, y + 10))
+            
+            # Описание улучшения с обертыванием текста
+            description = get_text(upgrade['description_key'])
+            wrapped_description = render_wrapped_text(description, desc_font, TEXT_COLOR, max_description_width)
+            for line_idx, line in enumerate(wrapped_description):
+                screen.blit(line, (60, y + 40 + line_idx * 20))
+            
+            # Кнопка купить/продать
+            if upgrade['id'] in settings['purchased_upgrades']:
+                button_text = get_text('sell')
+                button_color = (255, 100, 100)  # Красный для продажи
+                price_display = f"${upgrade['price'] / 2:.0f}"
+            else:
+                button_text = get_text('buy')
+                button_color = (100, 255, 100)  # Зеленый для покупки
+                price_display = f"${upgrade['price']}"
+            
+            button_surface = button_font.render(button_text, True, button_color)
+            button_rect = button_surface.get_rect()
+            button_rect.topleft = (SCREEN_WIDTH - 170, y + 10)
+            screen.blit(button_surface, button_rect)
+            
+            # Отображение цены рядом с кнопкой
+            price_surface = shop_font.render(price_display, True, TEXT_COLOR)
+            screen.blit(price_surface, (SCREEN_WIDTH - 160, y + 50))
+        
+        # Кнопка выхода из магазина
+        back_text = get_text('esc_to_menu')
+        back_surface = button_font.render(back_text, True, TEXT_COLOR)
+        back_rect = back_surface.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 50))
+        screen.blit(back_surface, back_rect)
+        
+        # Обработка выхода из магазина при нажатии Esc
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_ESCAPE]:
+            shop_running = False
+        
+        # Применение VHS эффектов
+        chromatic_surface = chromatic_aberration(screen.copy())
+        apply_scanlines(chromatic_surface)
+
+        # Наложение VHS эффекта на экран
+        screen.blit(chromatic_surface, (0, 0))
+        
         pygame.display.flip()
         clock.tick(60)
 
@@ -1449,6 +1671,75 @@ def change_language():
         
         pygame.display.flip()
         clock.tick(60)
+        
+def render_wrapped_text(text, font, color, max_width):
+    words = text.split(' ')
+    lines = []
+    current_line = ''
+
+    for word in words:
+        test_line = current_line + word + ' '
+        if font.size(test_line)[0] <= max_width:
+            current_line = test_line
+        else:
+            lines.append(current_line)
+            current_line = word + ' '
+
+    if current_line:
+        lines.append(current_line)
+
+    rendered_lines = [font.render(line, True, color) for line in lines]
+    return rendered_lines
+        
+def select_start_wave():
+    selecting = True
+    selected_wave = 1  # Начальная волна по умолчанию
+    max_wave = 24  # Максимально доступная волна
+    
+    selection_font = pygame.font.SysFont('Courier', 36)
+    instruction_font = pygame.font.SysFont('Courier', 24)
+    
+    while selecting:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LEFT:
+                    selected_wave = max(1, selected_wave - 1)
+                elif event.key == pygame.K_RIGHT:
+                    selected_wave = min(max_wave, selected_wave + 1)
+                elif event.key == pygame.K_RETURN:
+                    selecting = False
+                elif event.key == pygame.K_ESCAPE:
+                    selecting = False
+    
+        # Очистка экрана
+        screen.fill(BACKGROUND_COLOR)
+    
+        # Заголовок выбора волны
+        title_text = selection_font.render(get_text('wave_selection_title'), True, TEXT_COLOR)
+        screen.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, 100))
+    
+        # Выбор волны
+        wave_text = font.render(f"{get_text('wave')}: {selected_wave}", True, TEXT_COLOR)
+        screen.blit(wave_text, (SCREEN_WIDTH // 2 - wave_text.get_width() // 2, SCREEN_HEIGHT // 2 - 50))
+    
+        # Инструкция
+        instruction_text = instruction_font.render(get_text('wave_selection_instruction'), True, TEXT_COLOR)
+        screen.blit(instruction_text, (SCREEN_WIDTH // 2 - instruction_text.get_width() // 2, SCREEN_HEIGHT // 2 + 20))
+    
+        # Применение VHS эффектов
+        chromatic_surface = chromatic_aberration(screen.copy())
+        apply_scanlines(chromatic_surface)
+    
+        # Наложение VHS эффекта на экран
+        screen.blit(chromatic_surface, (0, 0))
+    
+        pygame.display.flip()
+        clock.tick(60)
+    
+    return selected_wave
 
 def main():
     player = Player(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
@@ -1466,6 +1757,9 @@ def main():
     esc_pressed_during_pause = False  # Флаг, указывающий, что Esc был нажат во время паузы
     boss_appearance_number = 1  # Счетчик появлений босса
     pause_initialized = False
+    
+    if 'divinity' in settings['purchased_upgrades']:
+        wave = select_start_wave()
 
     while running:
         delta_time = clock.tick(60)
@@ -1540,6 +1834,13 @@ def main():
                     
                     pygame.display.flip()
                     time.sleep(2)
+                    
+                    # Конвертация опыта в $
+                    earned_dollars = player.exp / 15 * wave
+                    settings['currency'] += earned_dollars
+                    player.exp = 0
+                    save_settings(settings)
+                    
                     return  # Возврат в главное меню
 
             # Обновление и отображение врагов и снарядов
@@ -1639,6 +1940,12 @@ def main():
                 
                 pygame.display.flip()
                 time.sleep(2)
+                
+                # Конвертация опыта в $
+                earned_dollars = player.exp / 15 * wave
+                settings['currency'] += earned_dollars
+                player.exp = 0
+                save_settings(settings)
 
                 # Если игрок погиб во время боя с боссом, останавливаем музыку босса и запускаем обычную
                 if in_boss_fight:
