@@ -146,7 +146,7 @@ localization = {
         'esc_to_menu': 'Press ESC to return to the main menu.',
         'shop': 'Shop',
         'currency_display': 'Currency: ${:.2f}',
-        'buy': 'Buy',
+        'buy': ' Buy',
         'sell': 'Sell',
         'glass_cannon_name': 'Glass Cannon',
         'glass_cannon_description': 'All player HP is divided by 2, and damage is multiplied by 2 throughout the run.',
@@ -820,8 +820,8 @@ class RusherEnemy(Enemy):
         
 # Класс босса
 class Boss(Enemy):
-    def __init__(self, x, y, appearance_number=1):
-        super().__init__(x, y, is_shooter=False, wave=1)
+    def __init__(self, x, y, appearance_number=1, wave=5):
+        super().__init__(x, y, is_shooter=False, wave=wave)
         self.symbol = 'B'
         # Стартовые характеристики
         base_hp = 69
@@ -848,8 +848,97 @@ class Boss(Enemy):
         self.attack_in_progress = False
         self.next_attack = None
 
-    def update(self, delta_time, player_x, player_y, projectiles):
+        # Фазы босса
+        self.phases = [
+            {'threshold': 0.7, 'patterns': ['explode_shot', 'burst_shot', 'melee_attack']},  # Фаза 0: hp_ratio >0.7
+            {'threshold': 0.5, 'patterns': ['explode_shot', 'laser_beam', 'rush']},  # Фаза 1: 0.4 < hp_ratio <=0.7
+            {'threshold': 0.2, 'patterns': ['laser_beam', 'rush']},  # Фаза 2: 0.1 < hp_ratio <=0.4
+            {'threshold': 0.0, 'patterns': ['laser_beam', 'summon_suicide_enemies']}  # Фаза 3: hp_ratio <=0.1
+        ]
+        self.current_phase = 0
+        self.wave = wave
+        # Параметры для рывка
+        self.rushing = False
+        self.resting = False
+        self.rush_speed = 10  # Скорость рывка
+        self.rush_inertia = 0.97  # Инерция для замедления рывка
+        self.velocity_x = 0
+        self.velocity_y = 0
+        self.rush_start_time = None
+        self.rest_start_time = None
+        self.rush_duration = 900  # Длительность рывка в мс
+        self.rush_rest_min = 1000  # Минимальное время отдыха после рывка
+        self.rush_rest_max = 2500  # Максимальное время отдыха после рывка
+        # Атрибуты для атаки кнута
+        self.whip_active = False            # Флаг активности атаки кнута
+        self.whip_start_time = 0            # Время начала атаки кнута
+        self.whip_emit_interval = 40        # Интервал выпуска проектиля (мс)
+        self.last_whip_emit_time = 0         # Время последнего выпуска проектиля
+        self.whip_angle = 0                  # Текущий угол выпуска (рад)
+        self.whip_rotation_speed = math.pi / 2  # Скорость вращения (рад/сек)
+        self.whip_duration = random.randint(1500, 3000)            # Длительность атаки кнута (мс)
+
+    def update_phase(self):
+        hp_ratio = self.hp / self.max_hp
+        new_phase = self.current_phase  # Инициализация текущей фазой
+
+        for i, phase in enumerate(self.phases):
+            if hp_ratio > phase['threshold']:
+                # Найдено условие для текущей фазы
+                new_phase = i
+                break
+
+        if new_phase != self.current_phase:
+            self.current_phase = new_phase
+
+    def update(self, delta_time, player_x, player_y, projectiles, enemies):
         current_time = pygame.time.get_ticks()
+
+        # Обновляем фазу босса
+        self.update_phase()
+        
+        # Управление атакой кнута
+        if self.whip_active:
+            if current_time - self.last_whip_emit_time >= self.whip_emit_interval:
+                self.laser_beam(projectiles)
+                self.last_whip_emit_time = current_time
+
+            self.whip_angle += self.whip_rotation_speed * (self.whip_emit_interval / 1000.0)  # rad/sec * sec = rad
+            self.whip_angle %= (2 * math.pi)  # Ограничиваем угол до [0, 2π)
+
+            # Проверяем окончание атаки кнута
+            if current_time - self.whip_start_time >= self.whip_duration:
+                self.whip_active = False
+                self.attack_in_progress = False
+                self.next_attack = None
+            return  # Пропускаем остальные обновления, пока босс выполняет атаку кнута
+        
+        # Если босс находится в состоянии рывка
+        if self.rushing:
+            # Движение с инерцией
+            self.velocity_x *= self.rush_inertia
+            self.velocity_y *= self.rush_inertia
+            self.x += self.velocity_x
+            self.y += self.velocity_y
+
+            # Ограничиваем позицию босса в пределах экрана
+            self.x = max(0, min(self.x, SCREEN_WIDTH - FONT_SIZE))
+            self.y = max(0, min(self.y, SCREEN_HEIGHT - FONT_SIZE))
+
+            if current_time - self.rush_start_time >= self.rush_duration:
+                # Рывок завершён, начало отдыха
+                self.rushing = False
+                self.resting = True
+                self.rest_start_time = current_time
+                self.color = ENEMY_DEFAULT_COLOR  # Сброс цвета после рывка
+
+            return  # Пропускаем остальные обновления, пока босс занят рывком
+        
+        # Если босс отдыхает после рывка
+        if self.resting:
+            if current_time - self.rest_start_time >= random.randint(self.rush_rest_min, self.rush_rest_max):
+                self.resting = False  # Завершение отдыха
+            return  # Пропускаем остальные обновления, пока босс отдыхает
 
         # Босс движется к игроку
         self.move_towards_player(player_x, player_y, [])
@@ -866,7 +955,7 @@ class Boss(Enemy):
                 else:
                     # Тряска закончилась, выполняем атаку
                     self.shaking = False
-                    self.execute_attack(player_x, player_y, projectiles)
+                    self.execute_attack(player_x, player_y, projectiles, enemies)
                     # Запоминаем время окончания атаки для кулдауна
                     self.last_attack_time = current_time
                     self.attack_in_progress = False
@@ -886,12 +975,13 @@ class Boss(Enemy):
         # Начинаем тряску перед атакой
         self.shaking = True
         self.shake_start_time = pygame.time.get_ticks()
-        # Сохраняем тип следующей атаки
-        self.next_attack = self.attack_patterns[self.current_attack_index]
+        
+        # Выбираем атаки в зависимости от текущей фазы
+        current_phase_patterns = self.phases[self.current_phase]['patterns']
+        self.next_attack = random.choice(current_phase_patterns)
         self.attack_in_progress = True
-
-    def execute_attack(self, player_x, player_y, projectiles):
-        # Выполняем атаку после тряски
+        
+    def execute_attack(self, player_x, player_y, projectiles, enemies):
         if self.next_attack == 'explode_shot':
             self.explode_shot(projectiles)
         elif self.next_attack == 'burst_shot':
@@ -899,12 +989,34 @@ class Boss(Enemy):
         elif self.next_attack == 'melee_attack':
             self.is_red = True  # Босс становится красным для ближней атаки
             self.red_start_time = pygame.time.get_ticks()
+        elif self.next_attack == 'laser_beam':
+            # Инициализация атаки кнута после тряски
+            self.whip_active = True
+            self.whip_start_time = pygame.time.get_ticks()
+            self.last_whip_emit_time = self.whip_start_time
+            self.whip_angle = 0  # Начальный угол
+        elif self.next_attack == 'summon_suicide_enemies':
+            self.summon_suicide_enemies(enemies)
+        elif self.next_attack == 'rush':
+            self.perform_rush(player_x, player_y)
         # Сбрасываем тип следующей атаки
         self.next_attack = None
+        
+    def perform_rush(self, player_x, player_y):
+        # Направление к игроку
+        dx = player_x - self.x
+        dy = player_y - self.y
+        distance = math.sqrt(dx ** 2 + dy ** 2)
+        if distance > 0:
+            self.velocity_x = (dx / distance) * self.rush_speed
+            self.velocity_y = (dy / distance) * self.rush_speed
+            self.rushing = True
+            self.rush_start_time = pygame.time.get_ticks()
+            self.color = (255, 0, 0)
 
     def explode_shot(self, projectiles):
         # Босс выпускает снаряды во все стороны
-        num_projectiles = 12
+        num_projectiles = 15
         angle_between_projectiles = 360 / num_projectiles
         for i in range(num_projectiles):
             angle = math.radians(i * angle_between_projectiles)
@@ -917,12 +1029,35 @@ class Boss(Enemy):
         # Босс стреляет очередью из 5-10 снарядов в игрока
         num_shots = random.randint(5, 10)
         for _ in range(num_shots):
-            dx = player_x - self.x + random.uniform(-20, 20)  # Немного разброса
-            dy = player_y - self.y + random.uniform(-20, 20)
+            dx = player_x - self.x + random.uniform(-25, 25)  # Немного разброса
+            dy = player_y - self.y + random.uniform(-25, 25)
             distance = math.sqrt(dx ** 2 + dy ** 2)
             if distance > 0:
                 projectile = Projectile(self.x, self.y, dx / distance, dy / distance, self.projectile_damage)
                 projectiles.append(projectile)
+
+    def laser_beam(self, projectiles):
+        # Расчёт направления на основе текущего угла
+        dx = math.cos(self.whip_angle)
+        dy = math.sin(self.whip_angle)
+        
+        projectile = Projectile(
+            x=self.x,
+            y=self.y,
+            dx=dx,
+            dy=dy,
+            damage=self.projectile_damage,
+            follow_player=False
+        )
+        projectiles.append(projectile)
+
+    def summon_suicide_enemies(self, enemies):
+        num_suicide_enemies = random.randint(3, 5)
+        for _ in range(num_suicide_enemies):
+            spawn_x = random.randint(0, SCREEN_WIDTH)
+            spawn_y = random.randint(0, SCREEN_HEIGHT)
+            suicide_enemy = SuicideEnemy(spawn_x, spawn_y, wave=self.wave)
+            enemies.append(suicide_enemy)
 
     def take_damage(self, damage):
         self.hp -= damage
@@ -1383,7 +1518,7 @@ def shop_menu():
             
             button_surface = button_font.render(button_text, True, button_color)
             button_rect = button_surface.get_rect()
-            button_rect.topleft = (SCREEN_WIDTH - 170, y + 10)
+            button_rect.topleft = (SCREEN_WIDTH - 173, y + 10)
             screen.blit(button_surface, button_rect)
             
             # Отображение цены рядом с кнопкой
@@ -1804,7 +1939,7 @@ def main():
                         if not music_channel.get_busy():
                             music_channel.play(boss_music, -1)
                         # Спавним босса
-                        boss = Boss(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, boss_appearance_number)
+                        boss = Boss(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, boss_appearance_number, wave)
                         enemies.append(boss)
                         boss_appearance_number += 1
                     else:
@@ -1840,7 +1975,7 @@ def main():
             for enemy in enemies:
                 enemy.move_towards_player(player.x, player.y, enemies)
                 if isinstance(enemy, Boss):
-                    enemy.update(delta_time, player.x, player.y, projectiles)
+                    enemy.update(delta_time, player.x, player.y, projectiles, enemies)
                     symbol = enemy.symbol
                     # Проверка состояния босса для отображения цвета
                     if enemy.is_red:
