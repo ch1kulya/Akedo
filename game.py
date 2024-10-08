@@ -425,11 +425,10 @@ class Player:
         self.health_pickup_heal_amount = 1  # Начальное количество восстанавливаемого HP аптечкой
         
         # Применение купленных улучшений
-        for upgrade_id in settings['purchased_upgrades']:
-            if upgrade_id == 'glass_cannon':
-                self.max_hp /= 2
-                self.hp = self.max_hp
-                self.damage *= 2
+        if 'glass_cannon' in settings['purchased_upgrades']:
+            self.max_hp /= 2
+            self.hp = self.max_hp
+            self.damage *= 2
 
     def move(self, target_x, target_y):
         direction_x = target_x - self.x
@@ -1101,31 +1100,29 @@ def upgrade_menu(player):
                 sys.exit()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_1:
-                    for upgrade_id in settings['purchased_upgrades']:
-                        if upgrade_id == 'glass_cannon':
-                            player.max_hp *= 1.07
-                            player.max_hp = round(player.max_hp, 1)
-                            player.hp = player.max_hp
-                            player.hp_upgrade_count += 1
-                        else:
-                            # Увеличиваем максимальное HP на 10%
-                            player.max_hp *= 1.10
-                            player.max_hp = round(player.max_hp, 1)  # Округляем до одного знака после запятой
-                            player.hp = player.max_hp  # Восстанавливаем HP до максимума
-                            player.hp_upgrade_count += 1  # Увеличиваем счетчик улучшений HP
+                    if 'glass_cannon' in settings['purchased_upgrades']:
+                        player.max_hp *= 1.07
+                        player.max_hp = round(player.max_hp, 1)
+                        player.hp = player.max_hp
+                        player.hp_upgrade_count += 1
+                    else:
+                        # Увеличиваем максимальное HP на 10%
+                        player.max_hp *= 1.10
+                        player.max_hp = round(player.max_hp, 1)  # Округляем до одного знака после запятой
+                        player.hp = player.max_hp  # Восстанавливаем HP до максимума
+                        player.hp_upgrade_count += 1  # Увеличиваем счетчик улучшений HP
 
-                            # Увеличиваем количество восстанавливаемого HP аптечкой на 20%
-                            player.health_pickup_heal_amount *= 1.20
-                            player.health_pickup_heal_amount = round(player.health_pickup_heal_amount, 1)  # Округляем
+                        # Увеличиваем количество восстанавливаемого HP аптечкой на 20%
+                        player.health_pickup_heal_amount *= 1.20
+                        player.health_pickup_heal_amount = round(player.health_pickup_heal_amount, 1)  # Округляем
 
                     selected = "hp"
                     pygame.mixer.Sound.play(upgrade_select_sound)
                 elif event.key == pygame.K_2:
-                    for upgrade_id in settings['purchased_upgrades']:
-                        if upgrade_id == 'glass_cannon':
-                            player.damage += 2
-                        else:
-                            player.damage += 1
+                    if 'glass_cannon' in settings['purchased_upgrades']:
+                        player.damage += 2
+                    else:
+                        player.damage += 1
                     selected = "damage"
                     pygame.mixer.Sound.play(upgrade_select_sound)
                 elif event.key == pygame.K_3:
