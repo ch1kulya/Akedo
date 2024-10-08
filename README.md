@@ -12,12 +12,6 @@ Endless Console-Style Pygame is a minimalist game developed using Pygame. The ob
 
 ![](screenshots/gameplay.gif)
 
-## Screenshots
-
-![Main Menu](screenshots/main.png)
-![Gameplay](screenshots/gameplay.png)
-![Settings](screenshots/settings.png)
-
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
