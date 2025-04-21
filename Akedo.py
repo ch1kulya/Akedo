@@ -277,14 +277,15 @@ def apply_display_settings():
     global screen, font, SCREEN_WIDTH, SCREEN_HEIGHT
     SCREEN_WIDTH, SCREEN_HEIGHT = settings['resolution']
     
+    flags = pygame.NOFRAME
     if settings['fullscreen']:
         # Получаем текущее разрешение дисплея пользователя
         infoObject = pygame.display.Info()
         display_resolution = (infoObject.current_w, infoObject.current_h)
-        screen = pygame.display.set_mode(display_resolution, pygame.FULLSCREEN, pygame.NOFRAME)
+        screen = pygame.display.set_mode(display_resolution, flags | pygame.FULLSCREEN | pygame.HWSURFACE | pygame.DOUBLEBUF)
         SCREEN_WIDTH, SCREEN_HEIGHT = display_resolution  # Обновляем глобальные переменные
     else:
-        screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.NOFRAME)
+        screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), flags | pygame.HWSURFACE | pygame.DOUBLEBUF)
     
     # Обновляем шрифт, если необходимо
     font = pygame.font.SysFont('Courier', FONT_SIZE)
