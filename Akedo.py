@@ -555,13 +555,13 @@ class Enemy:
         self.damage = base_damage * (1 + 0.05 * (wave - 1))  # Урон врагов увеличивается с волнами
         self.color = ENEMY_DEFAULT_COLOR
         self.damage_timer = random.randint(1000, 3000) + random.randint(0, 5000)  # Случайный таймер
-        self.red_duration = 2000  # Как долго враг остается красным
+        self.red_duration = random.randint(1500, 2500)  # Как долго враг остается красным
         self.last_hit_time = pygame.time.get_ticks()
         self.is_dead = False
         self.shaking = False
         self.shake_start_time = 0
         self.is_shooter = is_shooter  # Является ли враг стрелком?
-        self.shoot_cooldown = 2000 if is_shooter else None  # Кулдаун между выстрелами для стрелков
+        self.shoot_cooldown = random.randint(1500, 4500) if is_shooter else None  # Кулдаун между выстрелами для стрелков
         self.last_shot_time = pygame.time.get_ticks() if is_shooter else None
         self.preferred_distance = random.randint(150, 250)  # Предпочтительное расстояние до игрока
 
@@ -1642,38 +1642,17 @@ def settings_menu():
         clock.tick(60)
 
 def change_resolution():
-    # Получаем текущее разрешение экрана пользователя
-    infoObject = pygame.display.Info()
-    current_display_resolution = (infoObject.current_w, infoObject.current_h)
-    
-    # Добавляем текущие разрешения и стандартные варианты
     resolutions = [
         (1280, 720),
         (1366, 768),
         (1600, 768),
         (1600, 900),
-        (1776, 1000),
-        (1920, 1080),
-        (2048, 1152),
-        (1856, 1392),
-        (2560, 1440),
-        (3440, 1440),
-        (3840, 2160),
-        current_display_resolution  # Добавляем текущее разрешение дисплея
     ]
-    
-    # Убедимся, что текущее разрешение не добавлено несколько раз
-    if current_display_resolution not in resolutions:
-        resolutions.append(current_display_resolution)
-    
-    # Определяем индекс текущего разрешения
     try:
         res_selected = resolutions.index(settings['resolution'])
     except ValueError:
         res_selected = 0
-    
     changing_resolution = True
-
     while changing_resolution:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -1690,22 +1669,13 @@ def change_resolution():
                     changing_resolution = False
                 elif event.key == pygame.K_ESCAPE:
                     changing_resolution = False
-
-        # Очистка экрана
         screen.fill(BACKGROUND_COLOR)
-
-        # Отображение текущего разрешения
         resolution_text = font.render(f"Resolution: {resolutions[res_selected][0]}x{resolutions[res_selected][1]}", True, TEXT_COLOR)
         screen.blit(resolution_text, (SCREEN_WIDTH // 2 - resolution_text.get_width() // 2, SCREEN_HEIGHT // 2))
-
-        # Применение VHS эффектов
         chromatic_surface = chromatic_aberration(screen.copy())
         apply_scanlines(chromatic_surface)
-
-        # Наложение VHS эффекта на экран
         chromatic_surface.blit(chromatic_surface, (0, 0))
         screen.blit(chromatic_surface, (0, 0))
-
         pygame.display.flip()
         clock.tick(60)
 
