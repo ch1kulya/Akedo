@@ -736,8 +736,8 @@ class SuicideEnemy(Enemy):
         self.hp -= damage
         if self.hp <= 0:
             self.hp = 0
-            if not self.shaking:
-                self.is_dead = True  # Враг умирает сразу, без взрыва
+            self.is_dead = True  # Враг умирает сразу, без взрыва
+            self.explode = False
         else:
             if not self.shaking:
                 self.shaking = True
@@ -747,15 +747,17 @@ class SuicideEnemy(Enemy):
         if self.shaking:
             elapsed_time = pygame.time.get_ticks() - self.shake_start_time
             if elapsed_time < self.shake_duration:
-                # Тряска врага
-                self.x += random.randint(-SHAKE_INTENSITY, SHAKE_INTENSITY)
-                self.y += random.randint(-SHAKE_INTENSITY, SHAKE_INTENSITY)
+                if not self.is_dead:
+                    # Тряска врага
+                    self.x += random.randint(-SHAKE_INTENSITY, SHAKE_INTENSITY)
+                    self.y += random.randint(-SHAKE_INTENSITY, SHAKE_INTENSITY)
             else:
-                self.is_dead = True
-                self.explode = True  # Враг должен взорваться и выпустить снаряды
+                if not self.is_dead:
+                    self.is_dead = True
+                    self.explode = True  # Враг должен взорваться и выпустить снаряды
         else:
             # Обычное поведение движения к игроку
-            pass  # Движение обрабатывается в основном цикле или методом move_towards_player
+            pass
         
 class RusherEnemy(Enemy):
     def __init__(self, x, y, wave=6):
